@@ -14,6 +14,46 @@ let words = null;      // [{ text, start, end, space }]
 let wordSpans = [];    // element per words index (null for whitespace)
 let activeWord = -1;
 
+// ---------- DOM helpers ----------
+// A cached index.html can outlive its app.js on mobile, and a single missing
+// node used to throw at load time and leave every later listener unbound —
+// including playback. Missing nodes now disable just their own feature.
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+function on(id, event, handler, options) {
+  const node = el(id);
+  if (node) node.addEventListener(event, handler, options);
+  return node;
+}
+
+function setText(id, text) {
+  const node = el(id);
+  if (node) node.textContent = text;
+}
+
+function setHidden(id, hidden) {
+  const node = el(id);
+  if (node) node.hidden = hidden;
+}
+
+function getValue(id) {
+  const node = el(id);
+  return node ? node.value : '';
+}
+
+function setValue(id, value) {
+  const node = el(id);
+  if (node) node.value = value;
+}
+
+function isChecked(id) {
+  const node = el(id);
+  return node ? node.checked : false;
+}
+
 // ---------- storage ----------
 
 function loadScripts() {
@@ -102,12 +142,13 @@ async function cacheClear() {
 let toastTimer;
 
 function toast(message, kind) {
-  const el = document.getElementById('toast');
-  el.textContent = message;
-  el.className = kind === 'error' ? 'toast error' : 'toast';
-  el.hidden = false;
+  const node = el('toast');
+  if (!node) return;
+  node.textContent = message;
+  node.className = kind === 'error' ? 'toast error' : 'toast';
+  node.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, kind === 'error' ? 7000 : 2600);
+  toastTimer = setTimeout(() => { node.hidden = true; }, kind === 'error' ? 7000 : 2600);
 }
 
 // ---------- Claude API (translation and vocabulary) ----------
@@ -332,17 +373,18 @@ function formatTime(seconds) {
 }
 
 function onPlaybackChanged() {
-  document.getElementById('btn-playpause').textContent = player.playing ? '❚❚' : '▶';
+  setText('btn-playpause', player.playing ? '❚❚' : '▶');
   updatePlayerUi();
 }
 
 function updatePlayerUi() {
   const duration = player.duration;
   const position = player.position();
-  document.getElementById('time-current').textContent = formatTime(position);
-  document.getElementById('time-total').textContent = formatTime(duration);
-  if (!seeking) {
-    document.getElementById('seek').value = duration ? Math.round((position / duration) * 1000) : 0;
+  setText('time-current', formatTime(position));
+  setText('time-total', formatTime(duration));
+  const seekNode = el('seek');
+  if (!seeking && seekNode) {
+    seekNode.value = duration ? Math.round((position / duration) * 1000) : 0;
   }
   updateHighlight(position);
 }
@@ -379,21 +421,22 @@ function buildWords(alignment) {
 }
 
 function renderScriptText(script) {
-  const el = document.getElementById('practice-text');
-  el.innerHTML = '';
+  const container = el('practice-text');
+  if (!container) return;
+  container.innerHTML = '';
   wordSpans = [];
   activeWord = -1;
 
   if (!words) {
-    el.textContent = script.text;
-    el.classList.remove('has-words');
+    container.textContent = script.text;
+    container.classList.remove('has-words');
     return;
   }
 
-  el.classList.add('has-words');
+  container.classList.add('has-words');
   words.forEach((word, index) => {
     if (word.space) {
-      el.appendChild(document.createTextNode(word.text));
+      container.appendChild(document.createTextNode(word.text));
       wordSpans.push(null);
       return;
     }
@@ -401,7 +444,7 @@ function renderScriptText(script) {
     span.className = 'word';
     span.textContent = word.text;
     span.dataset.index = String(index);
-    el.appendChild(span);
+    container.appendChild(span);
     wordSpans.push(span);
   });
 }
@@ -433,7 +476,6 @@ function updateHighlight(position) {
 
 // Tap a word to seek to it; press and hold to look it up. The hold must not
 // also fire the tap, so the click that follows a long press is swallowed.
-const practiceTextEl = document.getElementById('practice-text');
 const LONG_PRESS_MS = 450;
 let pressTimer = null;
 let pressOrigin = null;
@@ -445,7 +487,7 @@ function cancelPress() {
   pressOrigin = null;
 }
 
-practiceTextEl.addEventListener('pointerdown', e => {
+on('practice-text', 'pointerdown', e => {
   const span = e.target.closest('.word');
   longPressFired = false;
   if (!span) return;
@@ -458,20 +500,20 @@ practiceTextEl.addEventListener('pointerdown', e => {
   }, LONG_PRESS_MS);
 });
 
-practiceTextEl.addEventListener('pointermove', e => {
+on('practice-text', 'pointermove', e => {
   if (!pressOrigin) return;
   if (Math.hypot(e.clientX - pressOrigin.x, e.clientY - pressOrigin.y) > 10) cancelPress();
 });
 
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
-  practiceTextEl.addEventListener(type, cancelPress);
+  on('practice-text', type, cancelPress);
 });
 
-practiceTextEl.addEventListener('contextmenu', e => {
+on('practice-text', 'contextmenu', e => {
   if (e.target.closest('.word')) e.preventDefault();
 });
 
-practiceTextEl.addEventListener('click', e => {
+on('practice-text', 'click', e => {
   const span = e.target.closest('.word');
   if (!span) return;
   if (longPressFired) return; // the hold already handled this press
@@ -489,63 +531,65 @@ function stripPunctuation(text) {
 }
 
 function closeVocab() {
-  document.getElementById('vocab-sheet').hidden = true;
-  document.getElementById('sheet-backdrop').hidden = true;
+  setHidden('vocab-sheet', true);
+  setHidden('sheet-backdrop', true);
 }
 
-document.getElementById('vocab-close').addEventListener('click', closeVocab);
-document.getElementById('sheet-backdrop').addEventListener('click', closeVocab);
+on('vocab-close', 'click', closeVocab);
+on('sheet-backdrop', 'click', closeVocab);
+
+function setVocabBody(html) {
+  const body = el('vocab-body');
+  if (body) body.innerHTML = html;
+}
 
 function renderVocab(entry) {
-  document.getElementById('vocab-body').innerHTML = `
+  setVocabBody(`
     <p class="vocab-pos">${escapeHtml(entry.pos)}</p>
     <p class="vocab-meaning">${escapeHtml(entry.meaning)}</p>
     ${entry.note ? `<p class="vocab-note">${escapeHtml(entry.note)}</p>` : ''}
     <div class="vocab-example">
       <p class="vocab-example-en">${escapeHtml(entry.example)}</p>
       <p class="vocab-example-ja">${escapeHtml(entry.exampleJa)}</p>
-    </div>`;
+    </div>`);
 }
 
 async function openVocab(span) {
   const script = getCurrentScript();
-  if (!script) return;
+  const sheet = el('vocab-sheet');
+  if (!script || !sheet) return;
 
   const word = stripPunctuation(span.textContent);
   if (!word) return;
 
-  const sheet = document.getElementById('vocab-sheet');
-  const title = document.getElementById('vocab-word');
-  const body = document.getElementById('vocab-body');
-
-  title.textContent = word;
+  setText('vocab-word', word);
   sheet.hidden = false;
-  document.getElementById('sheet-backdrop').hidden = false;
+  setHidden('sheet-backdrop', false);
 
   const key = word.toLowerCase();
   const cached = script.vocab && script.vocab[key];
   if (cached) {
-    title.textContent = cached.base || word;
+    setText('vocab-word', cached.base || word);
     renderVocab(cached);
     return;
   }
 
   if (!settings.claudeKey) {
-    body.innerHTML = '<p class="vocab-note">「設定」タブでAnthropic API Keyを入力すると、語彙の解説が表示されます。</p>';
+    setVocabBody('<p class="vocab-note">「設定」タブでAnthropic API Keyを入力すると、語彙の解説が表示されます。</p>');
     return;
   }
 
-  body.innerHTML = '<p class="vocab-note">調べています…</p>';
+  setVocabBody('<p class="vocab-note">調べています…</p>');
   try {
     const entry = await fetchVocab(word, script.text);
     script.vocab = script.vocab || {};
     script.vocab[key] = entry;
     saveScripts();
-    if (document.getElementById('vocab-sheet').hidden) return;
-    title.textContent = entry.base || word;
+    if (sheet.hidden) return;
+    setText('vocab-word', entry.base || word);
     renderVocab(entry);
   } catch (err) {
-    body.innerHTML = `<p class="vocab-note">${escapeHtml(err.message)}</p>`;
+    setVocabBody(`<p class="vocab-note">${escapeHtml(err.message)}</p>`);
   }
 }
 
@@ -554,22 +598,22 @@ async function openVocab(span) {
 let translationVisible = true;
 
 function renderTranslation(script) {
-  const btn = document.getElementById('btn-translate');
-  const el = document.getElementById('practice-translation');
+  const btn = el('btn-translate');
+  const text = el('practice-translation');
+  if (!btn || !text) return;
 
+  btn.hidden = false;
   if (!script.translation) {
-    el.hidden = true;
-    btn.hidden = false;
+    text.hidden = true;
     btn.textContent = '日本語訳を表示';
     return;
   }
-  el.textContent = script.translation;
-  el.hidden = !translationVisible;
-  btn.hidden = false;
+  text.textContent = script.translation;
+  text.hidden = !translationVisible;
   btn.textContent = translationVisible ? '日本語訳を隠す' : '日本語訳を表示';
 }
 
-document.getElementById('btn-translate').addEventListener('click', async () => {
+on('btn-translate', 'click', async () => {
   const script = getCurrentScript();
   if (!script) return;
 
@@ -615,7 +659,7 @@ function switchTab(tab) {
   window.scrollTo(0, 0);
 }
 
-document.getElementById('btn-goto-list').addEventListener('click', () => switchTab('list'));
+on('btn-goto-list', 'click', () => switchTab('list'));
 
 // ---------- script list ----------
 
@@ -630,14 +674,14 @@ function splitSentences(text) {
   return out.length ? out : [text.trim()];
 }
 
-document.getElementById('script-form').addEventListener('submit', e => {
+on('script-form', 'submit', e => {
   e.preventDefault();
-  const raw = document.getElementById('input-text').value.trim();
+  const raw = getValue('input-text').trim();
   if (!raw) return;
 
-  const note = document.getElementById('input-note').value.trim();
-  const tags = document.getElementById('input-tags').value.split(',').map(t => t.trim()).filter(Boolean);
-  const parts = document.getElementById('input-split').checked ? splitSentences(raw) : [raw];
+  const note = getValue('input-note').trim();
+  const tags = getValue('input-tags').split(',').map(t => t.trim()).filter(Boolean);
+  const parts = isChecked('input-split') ? splitSentences(raw) : [raw];
 
   parts.forEach(text => {
     scripts.push({
@@ -652,8 +696,8 @@ document.getElementById('script-form').addEventListener('submit', e => {
   });
 
   saveScripts();
-  document.getElementById('input-text').value = '';
-  document.getElementById('input-note').value = '';
+  setValue('input-text', '');
+  setValue('input-note', '');
   document.activeElement?.blur();
   renderScriptList();
   toast(parts.length === 1 ? '追加しました' : `${parts.length}件に分けて追加しました`);
@@ -671,14 +715,15 @@ function matchesFilter(script) {
   return haystack.includes(filter);
 }
 
-document.getElementById('search-input').addEventListener('input', e => {
+on('search-input', 'input', e => {
   filter = e.target.value.trim().toLowerCase();
   renderScriptList();
 });
 
 function renderScriptList() {
-  const list = document.getElementById('script-list');
-  document.getElementById('script-count').textContent = `(${scripts.length})`;
+  const list = el('script-list');
+  if (!list) return;
+  setText('script-count', `(${scripts.length})`);
 
   const visible = scripts.filter(matchesFilter);
 
@@ -785,41 +830,38 @@ async function selectScript(id) {
 }
 
 function setStatus(message) {
-  document.getElementById('player-status').textContent = message;
+  setText('player-status', message);
 }
 
 // The generate button doubles as the way to re-make audio that predates
 // word timings, so its label follows what the current script already has.
 function updateGenerateButton() {
-  const btn = document.getElementById('btn-generate');
-  if (!player.buffer) btn.textContent = '音声を生成';
-  else if (words) btn.textContent = '音声を作り直す';
-  else btn.textContent = 'ハイライト付きで作り直す';
+  if (!player.buffer) setText('btn-generate', '音声を生成');
+  else if (words) setText('btn-generate', '音声を作り直す');
+  else setText('btn-generate', 'ハイライト付きで作り直す');
 }
 
 function renderPractice() {
   const script = getCurrentScript();
-  const empty = document.getElementById('practice-empty');
-  const body = document.getElementById('practice-body');
 
   if (!script) {
-    empty.hidden = false;
-    body.hidden = true;
+    setHidden('practice-empty', false);
+    setHidden('practice-body', true);
     return;
   }
 
-  empty.hidden = true;
-  body.hidden = false;
+  setHidden('practice-empty', true);
+  setHidden('practice-body', false);
 
   const index = scripts.findIndex(s => s.id === script.id);
-  document.getElementById('practice-position').textContent = `${index + 1} / ${scripts.length}`;
+  setText('practice-position', `${index + 1} / ${scripts.length}`);
   renderScriptText(script);
-  document.getElementById('word-hint').hidden = !words;
+  setHidden('word-hint', !words);
   renderTranslation(script);
-  document.getElementById('practice-note').textContent = script.note || '';
-  document.getElementById('practice-stats').textContent =
+  setText('practice-note', script.note || '');
+  setText('practice-stats',
     `練習回数 ${script.practiceCount}回` +
-    (script.lastPracticed ? ` ・ 最終 ${new Date(script.lastPracticed).toLocaleString('ja-JP')}` : '');
+    (script.lastPracticed ? ` ・ 最終 ${new Date(script.lastPracticed).toLocaleString('ja-JP')}` : ''));
   updatePlayerUi();
   updateGenerateButton();
 }
@@ -831,8 +873,8 @@ function step(delta) {
   selectScript(scripts[next].id);
 }
 
-document.getElementById('btn-prev').addEventListener('click', () => step(-1));
-document.getElementById('btn-next').addEventListener('click', () => step(1));
+on('btn-prev', 'click', () => step(-1));
+on('btn-next', 'click', () => step(1));
 
 function base64ToArrayBuffer(base64) {
   const binary = atob(base64);
@@ -841,7 +883,7 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-document.getElementById('btn-generate').addEventListener('click', async () => {
+on('btn-generate', 'click', async () => {
   const script = getCurrentScript();
   if (!script) return;
 
@@ -903,7 +945,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('btn-playpause').addEventListener('click', () => {
+on('btn-playpause', 'click', () => {
   if (!player.buffer) {
     toast('先に「音声を生成」を押してください');
     return;
@@ -912,35 +954,46 @@ document.getElementById('btn-playpause').addEventListener('click', () => {
   else player.play();
 });
 
-document.getElementById('btn-rewind').addEventListener('click', () => player.nudge(-5));
-document.getElementById('btn-forward').addEventListener('click', () => player.nudge(5));
+on('btn-rewind', 'click', () => player.nudge(-5));
+on('btn-forward', 'click', () => player.nudge(5));
 
-const seek = document.getElementById('seek');
-['pointerdown', 'touchstart'].forEach(type => seek.addEventListener(type, () => { seeking = true; }));
-seek.addEventListener('input', () => {
-  seeking = true;
-  document.getElementById('time-current').textContent = formatTime((seek.value / 1000) * player.duration);
+function seekFraction() {
+  const node = el('seek');
+  return node ? Number(node.value) / 1000 : 0;
+}
+
+['pointerdown', 'touchstart'].forEach(type => {
+  on('seek', type, () => { seeking = true; });
 });
-seek.addEventListener('change', () => {
-  player.seek((seek.value / 1000) * player.duration);
+on('seek', 'input', () => {
+  seeking = true;
+  setText('time-current', formatTime(seekFraction() * player.duration));
+});
+on('seek', 'change', () => {
+  player.seek(seekFraction() * player.duration);
   seeking = false;
 });
 
-const speedRange = document.getElementById('speed-range');
-speedRange.addEventListener('input', () => {
-  document.getElementById('speed-value').textContent = `${parseFloat(speedRange.value).toFixed(2)}x`;
-});
-speedRange.addEventListener('change', () => player.setRate(parseFloat(speedRange.value)));
+function currentRate() {
+  const node = el('speed-range');
+  return node ? parseFloat(node.value) : 1;
+}
 
-document.getElementById('loop-toggle').addEventListener('change', e => player.setLoop(e.target.checked));
+on('speed-range', 'input', () => {
+  setText('speed-value', `${currentRate().toFixed(2)}x`);
+});
+on('speed-range', 'change', () => player.setRate(currentRate()));
+
+on('loop-toggle', 'change', e => player.setLoop(e.target.checked));
 
 // ---------- A-B repeat ----------
 
 let abStart = null;
 
 function updateAbUi() {
-  const btn = document.getElementById('btn-ab');
-  const clear = document.getElementById('btn-ab-clear');
+  const btn = el('btn-ab');
+  const clear = el('btn-ab-clear');
+  if (!btn || !clear) return;
   if (player.ab) {
     btn.textContent = `A-B ${formatTime(player.ab[0])} - ${formatTime(player.ab[1])}`;
     btn.classList.add('armed');
@@ -956,7 +1009,7 @@ function updateAbUi() {
   }
 }
 
-document.getElementById('btn-ab').addEventListener('click', () => {
+on('btn-ab', 'click', () => {
   if (!player.buffer) {
     toast('先に「音声を生成」を押してください');
     return;
@@ -980,14 +1033,14 @@ document.getElementById('btn-ab').addEventListener('click', () => {
   toast('区間リピートを開始しました');
 });
 
-document.getElementById('btn-ab-clear').addEventListener('click', () => {
+on('btn-ab-clear', 'click', () => {
   abStart = null;
   player.setAb(null);
   updateAbUi();
   toast('区間リピートを解除しました');
 });
 
-document.getElementById('btn-mark-practiced').addEventListener('click', () => {
+on('btn-mark-practiced', 'click', () => {
   const script = getCurrentScript();
   if (!script) return;
   script.practiceCount += 1;
@@ -1000,15 +1053,15 @@ document.getElementById('btn-mark-practiced').addEventListener('click', () => {
 
 // ---------- settings ----------
 
-document.getElementById('input-api-key').value = settings.apiKey || '';
-document.getElementById('input-voice-id').value = settings.voiceId || '';
-document.getElementById('input-claude-key').value = settings.claudeKey || '';
+setValue('input-api-key', settings.apiKey || '');
+setValue('input-voice-id', settings.voiceId || '');
+setValue('input-claude-key', settings.claudeKey || '');
 
-document.getElementById('settings-form').addEventListener('submit', e => {
+on('settings-form', 'submit', e => {
   e.preventDefault();
-  settings.apiKey = document.getElementById('input-api-key').value.trim();
-  settings.voiceId = document.getElementById('input-voice-id').value.trim();
-  settings.claudeKey = document.getElementById('input-claude-key').value.trim();
+  settings.apiKey = getValue('input-api-key').trim();
+  settings.voiceId = getValue('input-voice-id').trim();
+  settings.claudeKey = getValue('input-claude-key').trim();
   saveSettings();
   document.activeElement?.blur();
   toast('設定を保存しました');
@@ -1016,7 +1069,7 @@ document.getElementById('settings-form').addEventListener('submit', e => {
 
 // ---------- import / export ----------
 
-document.getElementById('btn-export').addEventListener('click', () => {
+on('btn-export', 'click', () => {
   const blob = new Blob([JSON.stringify(scripts, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1028,7 +1081,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
-document.getElementById('input-import').addEventListener('change', e => {
+on('input-import', 'change', e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -1045,7 +1098,7 @@ document.getElementById('input-import').addEventListener('change', e => {
   e.target.value = '';
 });
 
-document.getElementById('btn-load-sample').addEventListener('click', async () => {
+on('btn-load-sample', 'click', async () => {
   try {
     const res = await fetch('data/scripts.sample.json');
     if (!res.ok) throw new Error('サンプルを取得できませんでした');
@@ -1065,7 +1118,7 @@ function mergeScripts(incoming) {
   return additions.length;
 }
 
-document.getElementById('btn-clear-audio').addEventListener('click', async () => {
+on('btn-clear-audio', 'click', async () => {
   if (!(await cacheClear())) {
     toast('削除できませんでした', 'error');
     return;
