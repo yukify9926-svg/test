@@ -33,7 +33,13 @@
       </div>
 
       <p id="practice-text" class="practice-text"></p>
+      <p class="word-hint" id="word-hint" hidden>単語をタップで頭出し、長押しで語彙</p>
       <p id="practice-note" class="practice-note"></p>
+
+      <div class="translation-block">
+        <button id="btn-translate" class="translate-btn">日本語訳を表示</button>
+        <p id="practice-translation" class="practice-translation" hidden></p>
+      </div>
 
       <div class="player">
         <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="再生位置">
@@ -107,6 +113,13 @@
       <label>Voice ID
         <input type="text" id="input-voice-id" placeholder="My Voices からコピーしたID" autocomplete="off">
       </label>
+
+      <h2>Claude API(日本語訳・語彙)</h2>
+      <p class="hint">入力すると日本語訳と単語の語彙解説が使えます。空のままでも音声機能は動きます。</p>
+      <label>Anthropic API Key
+        <input type="password" id="input-claude-key" placeholder="sk-ant-..." autocomplete="off">
+      </label>
+
       <button type="submit" class="wide">保存</button>
     </form>
 
@@ -132,6 +145,16 @@
   <button class="tab-btn" data-tab="list"><span class="icon">☰</span>スクリプト</button>
   <button class="tab-btn" data-tab="settings"><span class="icon">⚙</span>設定</button>
 </nav>
+
+<div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
+<section id="vocab-sheet" class="sheet" hidden aria-label="語彙">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h3 id="vocab-word"></h3>
+    <button id="vocab-close" class="icon-btn" aria-label="閉じる">✕</button>
+  </div>
+  <div id="vocab-body" class="sheet-body"></div>
+</section>
 
 <div id="toast" class="toast" hidden></div>
 

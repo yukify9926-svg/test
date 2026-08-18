@@ -30,10 +30,11 @@ function saveScripts() {
 }
 
 function loadSettings() {
+  const empty = { apiKey: '', voiceId: '', claudeKey: '' };
   try {
-    return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || { apiKey: '', voiceId: '' };
+    return Object.assign(empty, JSON.parse(localStorage.getItem(SETTINGS_KEY)));
   } catch {
-    return { apiKey: '', voiceId: '' };
+    return empty;
   }
 }
 
@@ -107,6 +108,72 @@ function toast(message, kind) {
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, kind === 'error' ? 7000 : 2600);
+}
+
+// ---------- Claude API (translation and vocabulary) ----------
+// The official SDK is vendored at vendor/anthropic.js and imported on demand,
+// so the rest of the app keeps working when these features go unused.
+
+let claudeClient = null;
+
+async function getClaude() {
+  if (!settings.claudeKey) throw new Error('「設定」タブでAnthropic API Keyを入力してください');
+  if (claudeClient && claudeClient.key === settings.claudeKey) return claudeClient.client;
+  const { default: Anthropic } = await import('./vendor/anthropic.js');
+  const client = new Anthropic({ apiKey: settings.claudeKey, dangerouslyAllowBrowser: true });
+  claudeClient = { key: settings.claudeKey, client };
+  return client;
+}
+
+async function askClaude(prompt, schema) {
+  const client = await getClaude();
+  let res;
+  try {
+    res = await client.messages.create({
+      model: 'claude-opus-5',
+      max_tokens: 16000,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+      messages: [{ role: 'user', content: prompt }]
+    });
+  } catch (err) {
+    throw new Error(err.status === 401
+      ? 'Anthropic API Keyが正しくないようです'
+      : `Claude APIエラー: ${err.message}`);
+  }
+  const block = res.content.find(b => b.type === 'text');
+  if (!block) throw new Error('応答を取得できませんでした');
+  return JSON.parse(block.text);
+}
+
+function fetchTranslation(text) {
+  return askClaude(
+    `次の英文を日本語に訳してください。英語学習者が英文の構造をつかめるよう、意訳しすぎない自然な訳にしてください。\n\n英文: ${text}`,
+    {
+      type: 'object',
+      properties: { translation: { type: 'string', description: '英文全体の日本語訳' } },
+      required: ['translation'],
+      additionalProperties: false
+    }
+  );
+}
+
+function fetchVocab(word, sentence) {
+  return askClaude(
+    `英語学習者向けに、文中の語を解説してください。辞書的な語義の羅列ではなく、この文脈での意味を中心に説明してください。\n\n文: ${sentence}\n対象の語: ${word}`,
+    {
+      type: 'object',
+      properties: {
+        base: { type: 'string', description: '見出し語(原形)。句動詞やイディオムの一部ならその全体' },
+        pos: { type: 'string', description: '品詞を日本語で(例: 動詞、名詞、形容詞、句動詞)' },
+        meaning: { type: 'string', description: 'この文脈での意味を日本語で簡潔に' },
+        note: { type: 'string', description: 'ニュアンス、使いどころ、類義語との違いなどを1〜2文で' },
+        example: { type: 'string', description: 'この語を使った別の平易な英語例文を1つ' },
+        exampleJa: { type: 'string', description: 'その例文の日本語訳' }
+      },
+      required: ['base', 'pos', 'meaning', 'note', 'example', 'exampleJa'],
+      additionalProperties: false
+    }
+  );
 }
 
 // ---------- Web Audio player ----------
@@ -364,13 +431,175 @@ function updateHighlight(position) {
   activeWord = index;
 }
 
-document.getElementById('practice-text').addEventListener('click', e => {
+// Tap a word to seek to it; press and hold to look it up. The hold must not
+// also fire the tap, so the click that follows a long press is swallowed.
+const practiceTextEl = document.getElementById('practice-text');
+const LONG_PRESS_MS = 450;
+let pressTimer = null;
+let pressOrigin = null;
+let longPressFired = false;
+
+function cancelPress() {
+  clearTimeout(pressTimer);
+  pressTimer = null;
+  pressOrigin = null;
+}
+
+practiceTextEl.addEventListener('pointerdown', e => {
   const span = e.target.closest('.word');
-  if (!span || !words) return;
+  longPressFired = false;
+  if (!span) return;
+  pressOrigin = { x: e.clientX, y: e.clientY };
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    pressTimer = null;
+    longPressFired = true;
+    openVocab(span);
+  }, LONG_PRESS_MS);
+});
+
+practiceTextEl.addEventListener('pointermove', e => {
+  if (!pressOrigin) return;
+  if (Math.hypot(e.clientX - pressOrigin.x, e.clientY - pressOrigin.y) > 10) cancelPress();
+});
+
+['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+  practiceTextEl.addEventListener(type, cancelPress);
+});
+
+practiceTextEl.addEventListener('contextmenu', e => {
+  if (e.target.closest('.word')) e.preventDefault();
+});
+
+practiceTextEl.addEventListener('click', e => {
+  const span = e.target.closest('.word');
+  if (!span) return;
+  if (longPressFired) return; // the hold already handled this press
+  if (!words) return;
   const word = words[Number(span.dataset.index)];
   if (!word) return;
   player.seek(word.start);
   if (!player.playing) player.play();
+});
+
+// ---------- vocabulary sheet ----------
+
+function stripPunctuation(text) {
+  return text.replace(/^[^\p{L}\p{N}'’-]+|[^\p{L}\p{N}'’-]+$/gu, '');
+}
+
+function closeVocab() {
+  document.getElementById('vocab-sheet').hidden = true;
+  document.getElementById('sheet-backdrop').hidden = true;
+}
+
+document.getElementById('vocab-close').addEventListener('click', closeVocab);
+document.getElementById('sheet-backdrop').addEventListener('click', closeVocab);
+
+function renderVocab(entry) {
+  document.getElementById('vocab-body').innerHTML = `
+    <p class="vocab-pos">${escapeHtml(entry.pos)}</p>
+    <p class="vocab-meaning">${escapeHtml(entry.meaning)}</p>
+    ${entry.note ? `<p class="vocab-note">${escapeHtml(entry.note)}</p>` : ''}
+    <div class="vocab-example">
+      <p class="vocab-example-en">${escapeHtml(entry.example)}</p>
+      <p class="vocab-example-ja">${escapeHtml(entry.exampleJa)}</p>
+    </div>`;
+}
+
+async function openVocab(span) {
+  const script = getCurrentScript();
+  if (!script) return;
+
+  const word = stripPunctuation(span.textContent);
+  if (!word) return;
+
+  const sheet = document.getElementById('vocab-sheet');
+  const title = document.getElementById('vocab-word');
+  const body = document.getElementById('vocab-body');
+
+  title.textContent = word;
+  sheet.hidden = false;
+  document.getElementById('sheet-backdrop').hidden = false;
+
+  const key = word.toLowerCase();
+  const cached = script.vocab && script.vocab[key];
+  if (cached) {
+    title.textContent = cached.base || word;
+    renderVocab(cached);
+    return;
+  }
+
+  if (!settings.claudeKey) {
+    body.innerHTML = '<p class="vocab-note">「設定」タブでAnthropic API Keyを入力すると、語彙の解説が表示されます。</p>';
+    return;
+  }
+
+  body.innerHTML = '<p class="vocab-note">調べています…</p>';
+  try {
+    const entry = await fetchVocab(word, script.text);
+    script.vocab = script.vocab || {};
+    script.vocab[key] = entry;
+    saveScripts();
+    if (document.getElementById('vocab-sheet').hidden) return;
+    title.textContent = entry.base || word;
+    renderVocab(entry);
+  } catch (err) {
+    body.innerHTML = `<p class="vocab-note">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+// ---------- translation ----------
+
+let translationVisible = true;
+
+function renderTranslation(script) {
+  const btn = document.getElementById('btn-translate');
+  const el = document.getElementById('practice-translation');
+
+  if (!script.translation) {
+    el.hidden = true;
+    btn.hidden = false;
+    btn.textContent = '日本語訳を表示';
+    return;
+  }
+  el.textContent = script.translation;
+  el.hidden = !translationVisible;
+  btn.hidden = false;
+  btn.textContent = translationVisible ? '日本語訳を隠す' : '日本語訳を表示';
+}
+
+document.getElementById('btn-translate').addEventListener('click', async () => {
+  const script = getCurrentScript();
+  if (!script) return;
+
+  if (script.translation) {
+    translationVisible = !translationVisible;
+    renderTranslation(script);
+    return;
+  }
+
+  if (!settings.claudeKey) {
+    toast('「設定」タブでAnthropic API Keyを入力してください', 'error');
+    switchTab('settings');
+    return;
+  }
+
+  const btn = document.getElementById('btn-translate');
+  btn.disabled = true;
+  btn.textContent = '翻訳中...';
+  try {
+    const { translation } = await fetchTranslation(script.text);
+    script.translation = translation;
+    saveScripts();
+    translationVisible = true;
+    renderTranslation(script);
+  } catch (err) {
+    toast(err.message, 'error');
+    renderTranslation(script);
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ---------- tabs ----------
@@ -585,6 +814,8 @@ function renderPractice() {
   const index = scripts.findIndex(s => s.id === script.id);
   document.getElementById('practice-position').textContent = `${index + 1} / ${scripts.length}`;
   renderScriptText(script);
+  document.getElementById('word-hint').hidden = !words;
+  renderTranslation(script);
   document.getElementById('practice-note').textContent = script.note || '';
   document.getElementById('practice-stats').textContent =
     `練習回数 ${script.practiceCount}回` +
@@ -771,11 +1002,13 @@ document.getElementById('btn-mark-practiced').addEventListener('click', () => {
 
 document.getElementById('input-api-key').value = settings.apiKey || '';
 document.getElementById('input-voice-id').value = settings.voiceId || '';
+document.getElementById('input-claude-key').value = settings.claudeKey || '';
 
 document.getElementById('settings-form').addEventListener('submit', e => {
   e.preventDefault();
   settings.apiKey = document.getElementById('input-api-key').value.trim();
   settings.voiceId = document.getElementById('input-voice-id').value.trim();
+  settings.claudeKey = document.getElementById('input-claude-key').value.trim();
   saveSettings();
   document.activeElement?.blur();
   toast('設定を保存しました');

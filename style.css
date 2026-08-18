@@ -225,6 +225,129 @@ button.secondary:active, .file-btn:active { background: var(--accent-soft); }
   margin: 0 -2px;
   border-radius: 5px;
   transition: background-color 90ms linear, color 90ms linear;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.word-hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.76rem;
+  color: var(--muted-2, var(--muted));
+}
+
+.translation-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.translate-btn {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 0.45rem 0.85rem;
+  min-height: 40px;
+}
+
+.translate-btn:active { background: var(--accent-soft); }
+
+.practice-translation {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  background: var(--accent-soft);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text);
+  width: 100%;
+}
+
+/* ---- vocabulary sheet ---- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 31;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  padding: 0.5rem 1.15rem calc(1.5rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -10px 40px -16px rgba(0, 0, 0, 0.45);
+}
+
+.sheet-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  margin: 0.35rem auto 0.75rem;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.sheet-head h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  word-break: break-word;
+}
+
+.sheet-body p { margin: 0 0 0.7rem; }
+
+.vocab-pos {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.vocab-meaning {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.vocab-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.vocab-example {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 0.8rem;
+  margin-top: 1rem;
+}
+
+.vocab-example-en {
+  font-size: 0.95rem;
+  margin-bottom: 0.3rem !important;
+}
+
+.vocab-example-ja {
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .word.active {

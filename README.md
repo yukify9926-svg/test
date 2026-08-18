@@ -9,6 +9,8 @@
 **練習**
 - 再生中に読んでいる単語をハイライト表示(ElevenLabsの文字単位タイムスタンプを使用)
 - 単語をタップするとその位置から再生
+- スクリプトの日本語訳を表示 / 非表示(Claude APIで生成し、以後は端末に保存)
+- 単語を長押しすると、その文脈での意味・品詞・使い方・例文を表示
 - 5秒戻る / 5秒進む、シークバー、0.5〜1.25倍の速度調整
 - リピート再生と、聞き取りにくい箇所を繰り返すA-B区間リピート
 - 練習回数と最終練習日の記録、前後のスクリプトへの移動
@@ -30,8 +32,9 @@
    - API Key: https://elevenlabs.io/app/settings/api-keys で発行。権限は「テキスト読み上げ」のみで動作します
    - Voice ID: ElevenLabsの **My Voices** にある音声のIDを使用してください。無料プランではVoice Libraryの音声をAPIから利用できません
    - APIキーはこの端末のブラウザ(localStorage)にのみ保存され、リポジトリには含まれません
-3. 「スクリプト」タブで練習したい英文を追加
-4. 「練習する」→「音声を生成」で再生開始
+3. 日本語訳と語彙解説も使う場合は、同じ画面でAnthropic API Keyを入力(https://console.anthropic.com で発行)。空のままでも音声機能は使えます
+4. 「スクリプト」タブで練習したい英文を追加
+5. 「練習する」→「音声を生成」で再生開始
 
 ## データの保存
 
@@ -52,4 +55,16 @@ python3 -m http.server 8000
 | `style.css` | スタイル(モバイル向けレイアウト、ダークモード) |
 | `app.js` | 再生・ハイライト・データ管理 |
 | `manifest.json` | ホーム画面に追加するためのPWA設定 |
+| `vendor/anthropic.js` | Anthropic公式SDKをブラウザ向けにバンドルしたもの |
 | `data/scripts.sample.json` | サンプルスクリプト |
+
+### vendor/anthropic.js の更新
+
+日本語訳と語彙解説は[Anthropic公式TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript)を使っています。アプリ自体はビルド不要にしたいので、SDKだけを事前にバンドルして同梱しています。更新するときは以下を実行してください(現在同梱しているのは v0.117.1)。
+
+```bash
+npm install @anthropic-ai/sdk esbuild
+echo 'export { default } from "@anthropic-ai/sdk";' > entry.js
+npx esbuild entry.js --bundle --format=esm --platform=browser \
+  --conditions=browser,import --external:node:* --minify --outfile=vendor/anthropic.js
+```
