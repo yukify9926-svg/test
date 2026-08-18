@@ -2,23 +2,67 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>シャドーイング練習</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="app-header">
   <h1>シャドーイング練習</h1>
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="list">スクリプト一覧</button>
-    <button class="tab-btn" data-tab="practice">シャドーイング練習</button>
-    <button class="tab-btn" data-tab="settings">設定</button>
-  </nav>
 </header>
 
 <main>
+  <!-- 練習 -->
+  <section id="tab-practice" class="tab-panel active">
+    <div id="practice-empty" class="empty-state">
+      <p>まだスクリプトが選ばれていません。</p>
+      <button id="btn-goto-list" class="wide">スクリプトを追加・選択する</button>
+    </div>
+
+    <div id="practice-body" hidden>
+      <div class="script-nav">
+        <button id="btn-prev" class="icon-btn" aria-label="前のスクリプト">‹</button>
+        <span id="practice-position"></span>
+        <button id="btn-next" class="icon-btn" aria-label="次のスクリプト">›</button>
+      </div>
+
+      <p id="practice-text" class="practice-text"></p>
+      <p id="practice-note" class="practice-note"></p>
+
+      <div class="player">
+        <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="再生位置">
+        <div class="time-row">
+          <span id="time-current">0:00</span>
+          <span id="time-total">0:00</span>
+        </div>
+
+        <div class="transport">
+          <button id="btn-rewind" class="round" aria-label="5秒戻る">−5<small>秒</small></button>
+          <button id="btn-playpause" class="round primary" aria-label="再生">▶</button>
+          <button id="btn-forward" class="round" aria-label="5秒進む">+5<small>秒</small></button>
+        </div>
+
+        <div class="player-options">
+          <label class="speed">
+            <span>速度 <output id="speed-value">1.00x</output></span>
+            <input type="range" id="speed-range" min="0.5" max="1.25" step="0.05" value="1">
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="loop-toggle"> リピート再生
+          </label>
+        </div>
+
+        <button id="btn-generate" class="wide">音声を生成</button>
+        <p id="player-status" class="player-status"></p>
+      </div>
+
+      <button id="btn-mark-practiced" class="wide secondary">練習済みにする</button>
+      <p id="practice-stats" class="stats"></p>
+    </div>
+  </section>
+
   <!-- スクリプト一覧 -->
-  <section id="tab-list" class="tab-panel active">
+  <section id="tab-list" class="tab-panel">
     <form id="script-form">
       <h2>例文・表現を追加</h2>
       <label>英語スクリプト
@@ -30,76 +74,48 @@
       <label>タグ(任意・カンマ区切り)
         <input type="text" id="input-tags" placeholder="ビジネス, 口語">
       </label>
-      <button type="submit">追加</button>
+      <button type="submit" class="wide">追加</button>
     </form>
 
-    <h2>登録済みスクリプト <span id="script-count"></span></h2>
+    <h2>登録済み <span id="script-count" class="count"></span></h2>
     <div id="script-list" class="script-list"></div>
-  </section>
-
-  <!-- シャドーイング練習 -->
-  <section id="tab-practice" class="tab-panel">
-    <div class="practice-header">
-      <button id="btn-next-due">未練習を次へ</button>
-      <span id="practice-meta"></span>
-    </div>
-
-    <div id="practice-empty" class="empty-state">
-      <p>スクリプト一覧からスクリプトを選ぶか、「未練習を次へ」を押してください。</p>
-    </div>
-
-    <div id="practice-body" class="practice-body" hidden>
-      <p id="practice-text" class="practice-text"></p>
-      <p id="practice-note" class="practice-note"></p>
-
-      <div class="practice-controls">
-        <button id="btn-generate">音声を生成</button>
-        <audio id="audio-player" controls></audio>
-      </div>
-
-      <div class="practice-controls">
-        <button id="btn-rewind" type="button">⏪ 5秒戻る</button>
-        <label>再生速度: <span id="speed-value">1.0x</span>
-          <input type="range" id="speed-range" min="0.5" max="1.25" step="0.05" value="1">
-        </label>
-        <label class="checkbox">
-          <input type="checkbox" id="loop-toggle"> リピート再生
-        </label>
-      </div>
-
-      <div class="practice-controls">
-        <button id="btn-mark-practiced">練習済みにする</button>
-        <span id="practice-stats"></span>
-      </div>
-    </div>
   </section>
 
   <!-- 設定 -->
   <section id="tab-settings" class="tab-panel">
-    <h2>ElevenLabs API 設定</h2>
-    <p class="hint">APIキーはこのブラウザの localStorage にのみ保存され、リポジトリにはコミットされません。</p>
+    <h2>ElevenLabs API</h2>
+    <p class="hint">APIキーはこの端末のブラウザにのみ保存され、GitHubには送信されません。</p>
     <form id="settings-form">
-      <label>ElevenLabs API Key
-        <input type="password" id="input-api-key" placeholder="sk_...">
+      <label>API Key
+        <input type="password" id="input-api-key" placeholder="sk_..." autocomplete="off">
       </label>
       <label>Voice ID
-        <input type="text" id="input-voice-id" placeholder="21m00Tcm4TlvDq8ikWAM (Rachel)">
+        <input type="text" id="input-voice-id" placeholder="My Voices からコピーしたID" autocomplete="off">
       </label>
-      <button type="submit">保存</button>
+      <button type="submit" class="wide">保存</button>
     </form>
 
-    <h2>データの入出力</h2>
-    <p class="hint">スクリプトデータはブラウザ内に保存されます。GitHubに保存して他の端末と同期したい場合は、JSONをエクスポートして <code>data/scripts.json</code> として保存・コミットしてください。</p>
-    <div class="practice-controls">
-      <button id="btn-export">JSONをエクスポート</button>
-      <label class="file-btn">
-        JSONをインポート
-        <input type="file" id="input-import" accept="application/json" hidden>
+    <h2>データ</h2>
+    <p class="hint">生成した音声はこの端末に保存され、次回以降はAPIを使わず再生されます。</p>
+    <div class="button-column">
+      <button id="btn-export" class="wide secondary">スクリプトをJSONで書き出す</button>
+      <label class="wide secondary file-btn">
+        JSONを読み込む
+        <input type="file" id="input-import" accept="application/json,.json" hidden>
       </label>
-      <button id="btn-load-sample">サンプルデータを読み込む</button>
+      <button id="btn-load-sample" class="wide secondary">サンプルを読み込む</button>
+      <button id="btn-clear-audio" class="wide secondary">保存済み音声を削除</button>
     </div>
   </section>
 </main>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-tab="practice"><span class="icon">▶</span>練習</button>
+  <button class="tab-btn" data-tab="list"><span class="icon">☰</span>スクリプト</button>
+  <button class="tab-btn" data-tab="settings"><span class="icon">⚙</span>設定</button>
+</nav>
+
+<div id="toast" class="toast" hidden></div>
 
 <script src="app.js"></script>
 </body>
