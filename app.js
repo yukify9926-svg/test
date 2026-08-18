@@ -525,6 +525,7 @@ function clearAudio() {
   wordSpans = [];
   activeWord = -1;
   updateAbUi();
+  updateGenerateButton();
 }
 
 async function selectScript(id) {
@@ -545,7 +546,9 @@ async function selectScript(id) {
     if (currentScriptId !== id) return;
     words = buildWords(cached.alignment);
     renderPractice();
-    setStatus(words ? '保存済みの音声を読み込みました' : '保存済みの音声を読み込みました(ハイライトなし)');
+    setStatus(words
+      ? '保存済みの音声を読み込みました'
+      : 'この音声にはハイライトがありません。作り直すと単語が光ります');
     onPlaybackChanged();
   } catch {
     setStatus('「音声を生成」を押してください');
@@ -554,6 +557,15 @@ async function selectScript(id) {
 
 function setStatus(message) {
   document.getElementById('player-status').textContent = message;
+}
+
+// The generate button doubles as the way to re-make audio that predates
+// word timings, so its label follows what the current script already has.
+function updateGenerateButton() {
+  const btn = document.getElementById('btn-generate');
+  if (!player.buffer) btn.textContent = '音声を生成';
+  else if (words) btn.textContent = '音声を作り直す';
+  else btn.textContent = 'ハイライト付きで作り直す';
 }
 
 function renderPractice() {
@@ -578,6 +590,7 @@ function renderPractice() {
     `練習回数 ${script.practiceCount}回` +
     (script.lastPracticed ? ` ・ 最終 ${new Date(script.lastPracticed).toLocaleString('ja-JP')}` : '');
   updatePlayerUi();
+  updateGenerateButton();
 }
 
 function step(delta) {
@@ -655,7 +668,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     toast(err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '音声を生成';
+    updateGenerateButton();
   }
 });
 
