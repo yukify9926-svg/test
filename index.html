@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シャドーイング練習</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>シャドーイング練習</h1>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="list">スクリプト一覧</button>
+    <button class="tab-btn" data-tab="practice">シャドーイング練習</button>
+    <button class="tab-btn" data-tab="settings">設定</button>
+  </nav>
+</header>
+
+<main>
+  <!-- スクリプト一覧 -->
+  <section id="tab-list" class="tab-panel active">
+    <form id="script-form">
+      <h2>例文・表現を追加</h2>
+      <label>英語スクリプト
+        <textarea id="input-text" rows="3" placeholder="I've been meaning to reach out to you." required></textarea>
+      </label>
+      <label>意味・メモ(任意)
+        <input type="text" id="input-note" placeholder="ずっと連絡しようと思っていた">
+      </label>
+      <label>タグ(任意・カンマ区切り)
+        <input type="text" id="input-tags" placeholder="ビジネス, 口語">
+      </label>
+      <button type="submit">追加</button>
+    </form>
+
+    <h2>登録済みスクリプト <span id="script-count"></span></h2>
+    <div id="script-list" class="script-list"></div>
+  </section>
+
+  <!-- シャドーイング練習 -->
+  <section id="tab-practice" class="tab-panel">
+    <div class="practice-header">
+      <button id="btn-next-due">未練習を次へ</button>
+      <span id="practice-meta"></span>
+    </div>
+
+    <div id="practice-empty" class="empty-state">
+      <p>スクリプト一覧からスクリプトを選ぶか、「未練習を次へ」を押してください。</p>
+    </div>
+
+    <div id="practice-body" class="practice-body" hidden>
+      <p id="practice-text" class="practice-text"></p>
+      <p id="practice-note" class="practice-note"></p>
+
+      <div class="practice-controls">
+        <button id="btn-generate">音声を生成</button>
+        <audio id="audio-player" controls></audio>
+      </div>
+
+      <div class="practice-controls">
+        <label>再生速度: <span id="speed-value">1.0x</span>
+          <input type="range" id="speed-range" min="0.5" max="1.25" step="0.05" value="1">
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="loop-toggle"> リピート再生
+        </label>
+      </div>
+
+      <div class="practice-controls">
+        <button id="btn-mark-practiced">練習済みにする</button>
+        <span id="practice-stats"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="tab-settings" class="tab-panel">
+    <h2>ElevenLabs API 設定</h2>
+    <p class="hint">APIキーはこのブラウザの localStorage にのみ保存され、リポジトリにはコミットされません。</p>
+    <form id="settings-form">
+      <label>ElevenLabs API Key
+        <input type="password" id="input-api-key" placeholder="sk_...">
+      </label>
+      <label>Voice ID
+        <input type="text" id="input-voice-id" placeholder="21m00Tcm4TlvDq8ikWAM (Rachel)">
+      </label>
+      <button type="submit">保存</button>
+    </form>
+
+    <h2>データの入出力</h2>
+    <p class="hint">スクリプトデータはブラウザ内に保存されます。GitHubに保存して他の端末と同期したい場合は、JSONをエクスポートして <code>data/scripts.json</code> として保存・コミットしてください。</p>
+    <div class="practice-controls">
+      <button id="btn-export">JSONをエクスポート</button>
+      <label class="file-btn">
+        JSONをインポート
+        <input type="file" id="input-import" accept="application/json" hidden>
+      </label>
+      <button id="btn-load-sample">サンプルデータを読み込む</button>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "sample1",
+    "text": "I've been meaning to reach out to you.",
+    "note": "ずっと連絡しようと思っていた",
+    "tags": ["ビジネス", "口語"],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "lastPracticed": null,
+    "practiceCount": 0
+  },
+  {
+    "id": "sample2",
+    "text": "Let's circle back to this next week.",
+    "note": "これについては来週改めて話しましょう",
+    "tags": ["ビジネス"],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "lastPracticed": null,
+    "practiceCount": 0
+  },
+  {
+    "id": "sample3",
+    "text": "It's not that big of a deal, honestly.",
+    "note": "正直、そんなに大したことじゃないよ",
+    "tags": ["口語"],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "lastPracticed": null,
+    "practiceCount": 0
+  }
+]
