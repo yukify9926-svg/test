@@ -212,10 +212,28 @@ button.secondary:active, .file-btn:active { background: var(--accent-soft); }
 
 .practice-text {
   font-size: 1.35rem;
-  line-height: 1.55;
+  line-height: 1.7;
   margin: 0 0 0.5rem;
   font-weight: 500;
 }
+
+.practice-text.has-words { cursor: pointer; }
+
+.word {
+  display: inline-block;
+  padding: 0 2px;
+  margin: 0 -2px;
+  border-radius: 5px;
+  transition: background-color 90ms linear, color 90ms linear;
+}
+
+.word.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.word:active { background: var(--accent-soft); }
+.word.active:active { background: var(--accent-hover); }
 
 .practice-note {
   color: var(--muted);
@@ -355,6 +373,50 @@ input[type="range"]::-moz-range-thumb {
   width: 22px;
   height: 22px;
   accent-color: var(--accent);
+}
+
+.ab-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.ab-btn {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ab-btn.armed {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ab-btn.ghost { flex: 0 0 auto; min-width: 84px; }
+
+.search {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.8rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+  background: var(--surface);
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.switch.inline {
+  margin-bottom: 1rem;
+  color: var(--text);
+  font-size: 0.9rem;
 }
 
 .player-status {

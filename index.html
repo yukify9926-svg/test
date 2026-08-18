@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>シャドーイング練習</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="シャドーイング">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -52,6 +58,11 @@
           </label>
         </div>
 
+        <div class="ab-row">
+          <button id="btn-ab" class="ab-btn">A-B区間リピート</button>
+          <button id="btn-ab-clear" class="ab-btn ghost" hidden>解除</button>
+        </div>
+
         <button id="btn-generate" class="wide">音声を生成</button>
         <p id="player-status" class="player-status"></p>
       </div>
@@ -66,7 +77,10 @@
     <form id="script-form">
       <h2>例文・表現を追加</h2>
       <label>英語スクリプト
-        <textarea id="input-text" rows="3" placeholder="I've been meaning to reach out to you." required></textarea>
+        <textarea id="input-text" rows="4" placeholder="長い文章を貼り付けてもかまいません。" required></textarea>
+      </label>
+      <label class="switch inline">
+        <input type="checkbox" id="input-split" checked> 文ごとに分けて登録する
       </label>
       <label>意味・メモ(任意)
         <input type="text" id="input-note" placeholder="ずっと連絡しようと思っていた">
@@ -78,6 +92,7 @@
     </form>
 
     <h2>登録済み <span id="script-count" class="count"></span></h2>
+    <input type="search" id="search-input" class="search" placeholder="スクリプトを検索" aria-label="スクリプトを検索">
     <div id="script-list" class="script-list"></div>
   </section>
 
@@ -106,6 +121,9 @@
       <button id="btn-load-sample" class="wide secondary">サンプルを読み込む</button>
       <button id="btn-clear-audio" class="wide secondary">保存済み音声を削除</button>
     </div>
+
+    <h2>ホーム画面に追加</h2>
+    <p class="hint">ブラウザの共有ボタンから「ホーム画面に追加」を選ぶと、アプリのように全画面で起動できます。</p>
   </section>
 </main>
 

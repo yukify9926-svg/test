@@ -7,6 +7,12 @@ let scripts = loadScripts();
 let settings = loadSettings();
 let currentScriptId = null;
 let seeking = false;
+let filter = '';
+
+// Word timings for the script currently loaded in the player.
+let words = null;      // [{ text, start, end, space }]
+let wordSpans = [];    // element per words index (null for whitespace)
+let activeWord = -1;
 
 // ---------- storage ----------
 
@@ -63,15 +69,19 @@ function dbRequest(mode, run) {
 
 async function cacheGet(id) {
   try {
-    return (await dbRequest('readonly', store => store.get(id))) || null;
+    const value = await dbRequest('readonly', store => store.get(id));
+    if (!value) return null;
+    // Entries written before word timings existed are bare ArrayBuffers.
+    if (value instanceof ArrayBuffer) return { audio: value, alignment: null };
+    return value;
   } catch {
     return null;
   }
 }
 
-async function cachePut(id, arrayBuffer) {
+async function cachePut(id, entry) {
   try {
-    await dbRequest('readwrite', store => store.put(arrayBuffer, id));
+    await dbRequest('readwrite', store => store.put(entry, id));
   } catch {
     /* storage full or unavailable — regenerating still works */
   }
@@ -111,6 +121,7 @@ const player = {
   startedAt: 0,
   rate: 1,
   loop: false,
+  ab: null,        // [start, end] when an A-B region is set
   playing: false,
 
   unlock() {
@@ -132,6 +143,7 @@ const player = {
 
   async load(arrayBuffer) {
     this.stop();
+    this.ab = null;
     this.buffer = await this.decode(arrayBuffer);
     this.offset = 0;
   },
@@ -140,25 +152,35 @@ const player = {
     return this.buffer ? this.buffer.duration : 0;
   },
 
+  get regionStart() { return this.ab ? this.ab[0] : 0; },
+  get regionEnd() { return this.ab ? this.ab[1] : this.duration; },
+  get looping() { return this.loop || !!this.ab; },
+
   position() {
     if (!this.buffer) return 0;
     if (!this.playing) return this.offset;
-    const elapsed = (this.ctx.currentTime - this.startedAt) * this.rate;
-    const pos = this.offset + elapsed;
-    if (this.loop) return pos % this.duration;
-    return Math.min(pos, this.duration);
+    const raw = this.offset + (this.ctx.currentTime - this.startedAt) * this.rate;
+    if (!this.looping) return Math.min(raw, this.duration);
+    const start = this.regionStart;
+    const length = this.regionEnd - start;
+    if (length <= 0 || raw < this.regionEnd) return Math.min(raw, this.duration);
+    return start + ((raw - this.regionEnd) % length);
   },
 
   play() {
     if (!this.buffer) return;
     const ctx = this.unlock();
     this.stopSource();
-    if (!this.loop && this.offset >= this.duration - 0.01) this.offset = 0;
+
+    if (this.ab && (this.offset < this.ab[0] || this.offset >= this.ab[1])) this.offset = this.ab[0];
+    else if (!this.looping && this.offset >= this.duration - 0.01) this.offset = 0;
 
     const source = ctx.createBufferSource();
     source.buffer = this.buffer;
     source.playbackRate.value = this.rate;
-    source.loop = this.loop;
+    source.loop = this.looping;
+    source.loopStart = this.regionStart;
+    source.loopEnd = this.regionEnd;
     source.connect(ctx.destination);
     source.onended = () => {
       if (this.source !== source) return; // superseded by a newer source
@@ -167,7 +189,7 @@ const player = {
       this.source = null;
       onPlaybackChanged();
     };
-    source.start(0, this.loop ? this.offset % this.duration : this.offset);
+    source.start(0, this.offset);
 
     this.source = source;
     this.startedAt = ctx.currentTime;
@@ -200,34 +222,38 @@ const player = {
 
   seek(seconds) {
     if (!this.buffer) return;
-    const target = Math.max(0, Math.min(seconds, this.duration));
-    if (this.playing) {
-      this.offset = target;
-      this.play();
-    } else {
-      this.offset = target;
-      onPlaybackChanged();
-    }
+    this.offset = Math.max(0, Math.min(seconds, this.duration));
+    if (this.playing) this.play();
+    else onPlaybackChanged();
   },
 
   nudge(delta) {
     this.seek(this.position() + delta);
   },
 
-  setRate(rate) {
-    this.rate = rate;
+  restart() {
+    // Re-arm the current source so loop/rate/region changes take effect now.
     if (this.playing) {
       this.offset = this.position();
       this.play();
+    } else {
+      onPlaybackChanged();
     }
+  },
+
+  setRate(rate) {
+    this.rate = rate;
+    this.restart();
   },
 
   setLoop(loop) {
     this.loop = loop;
-    if (this.playing) {
-      this.offset = this.position();
-      this.play();
-    }
+    this.restart();
+  },
+
+  setAb(region) {
+    this.ab = region;
+    this.restart();
   }
 };
 
@@ -251,6 +277,7 @@ function updatePlayerUi() {
   if (!seeking) {
     document.getElementById('seek').value = duration ? Math.round((position / duration) * 1000) : 0;
   }
+  updateHighlight(position);
 }
 
 function tick() {
@@ -258,6 +285,93 @@ function tick() {
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
+
+// ---------- word highlighting ----------
+
+function buildWords(alignment) {
+  if (!alignment || !Array.isArray(alignment.characters)) return null;
+  const chars = alignment.characters;
+  const starts = alignment.character_start_times_seconds || [];
+  const ends = alignment.character_end_times_seconds || [];
+  if (starts.length !== chars.length || ends.length !== chars.length) return null;
+
+  const result = [];
+  let current = null;
+  for (let i = 0; i < chars.length; i++) {
+    if (/\s/.test(chars[i])) {
+      if (current) { result.push(current); current = null; }
+      result.push({ text: chars[i], space: true });
+      continue;
+    }
+    if (!current) current = { text: '', start: starts[i], end: ends[i] };
+    current.text += chars[i];
+    current.end = ends[i];
+  }
+  if (current) result.push(current);
+  return result.some(w => !w.space) ? result : null;
+}
+
+function renderScriptText(script) {
+  const el = document.getElementById('practice-text');
+  el.innerHTML = '';
+  wordSpans = [];
+  activeWord = -1;
+
+  if (!words) {
+    el.textContent = script.text;
+    el.classList.remove('has-words');
+    return;
+  }
+
+  el.classList.add('has-words');
+  words.forEach((word, index) => {
+    if (word.space) {
+      el.appendChild(document.createTextNode(word.text));
+      wordSpans.push(null);
+      return;
+    }
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = word.text;
+    span.dataset.index = String(index);
+    el.appendChild(span);
+    wordSpans.push(span);
+  });
+}
+
+function findWord(position) {
+  if (!words) return -1;
+  // Most lookups land on the active word or the one after it.
+  for (let i = Math.max(0, activeWord); i < words.length; i++) {
+    const word = words[i];
+    if (word.space) continue;
+    if (position < word.start) break;
+    if (position <= word.end) return i;
+  }
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    if (!word.space && position >= word.start && position <= word.end) return i;
+  }
+  return -1;
+}
+
+function updateHighlight(position) {
+  if (!words) return;
+  const index = findWord(position);
+  if (index === activeWord) return;
+  if (wordSpans[activeWord]) wordSpans[activeWord].classList.remove('active');
+  if (wordSpans[index]) wordSpans[index].classList.add('active');
+  activeWord = index;
+}
+
+document.getElementById('practice-text').addEventListener('click', e => {
+  const span = e.target.closest('.word');
+  if (!span || !words) return;
+  const word = words[Number(span.dataset.index)];
+  if (!word) return;
+  player.seek(word.start);
+  if (!player.playing) player.play();
+});
 
 // ---------- tabs ----------
 
@@ -276,24 +390,44 @@ document.getElementById('btn-goto-list').addEventListener('click', () => switchT
 
 // ---------- script list ----------
 
+function splitSentences(text) {
+  const out = [];
+  const re = /[^.!?…]+[.!?…]*["')\]]*\s*/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    const sentence = match[0].trim();
+    if (sentence) out.push(sentence);
+  }
+  return out.length ? out : [text.trim()];
+}
+
 document.getElementById('script-form').addEventListener('submit', e => {
   e.preventDefault();
-  const text = document.getElementById('input-text').value.trim();
-  if (!text) return;
+  const raw = document.getElementById('input-text').value.trim();
+  if (!raw) return;
 
-  scripts.push({
-    id: uid(),
-    text,
-    note: document.getElementById('input-note').value.trim(),
-    tags: document.getElementById('input-tags').value.split(',').map(t => t.trim()).filter(Boolean),
-    createdAt: new Date().toISOString(),
-    lastPracticed: null,
-    practiceCount: 0
+  const note = document.getElementById('input-note').value.trim();
+  const tags = document.getElementById('input-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  const parts = document.getElementById('input-split').checked ? splitSentences(raw) : [raw];
+
+  parts.forEach(text => {
+    scripts.push({
+      id: uid(),
+      text,
+      note: parts.length === 1 ? note : '',
+      tags,
+      createdAt: new Date().toISOString(),
+      lastPracticed: null,
+      practiceCount: 0
+    });
   });
+
   saveScripts();
-  e.target.reset();
+  document.getElementById('input-text').value = '';
+  document.getElementById('input-note').value = '';
+  document.activeElement?.blur();
   renderScriptList();
-  toast('追加しました');
+  toast(parts.length === 1 ? '追加しました' : `${parts.length}件に分けて追加しました`);
 });
 
 function escapeHtml(str) {
@@ -302,17 +436,32 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function matchesFilter(script) {
+  if (!filter) return true;
+  const haystack = [script.text, script.note, ...(script.tags || [])].join(' ').toLowerCase();
+  return haystack.includes(filter);
+}
+
+document.getElementById('search-input').addEventListener('input', e => {
+  filter = e.target.value.trim().toLowerCase();
+  renderScriptList();
+});
+
 function renderScriptList() {
   const list = document.getElementById('script-list');
   document.getElementById('script-count').textContent = `(${scripts.length})`;
 
-  if (scripts.length === 0) {
-    list.innerHTML = '<p class="hint">まだスクリプトがありません。上のフォームから追加してください。</p>';
+  const visible = scripts.filter(matchesFilter);
+
+  if (visible.length === 0) {
+    list.innerHTML = `<p class="hint">${scripts.length === 0
+      ? 'まだスクリプトがありません。上のフォームから追加してください。'
+      : '一致するスクリプトがありません。'}</p>`;
     return;
   }
 
   list.innerHTML = '';
-  [...scripts].reverse().forEach(script => {
+  [...visible].reverse().forEach(script => {
     const card = document.createElement('div');
     card.className = 'script-card';
     card.innerHTML = `
@@ -351,8 +500,7 @@ function renderScriptList() {
       saveScripts();
       if (currentScriptId === script.id) {
         currentScriptId = null;
-        player.stop();
-        player.buffer = null;
+        clearAudio();
       }
       renderScriptList();
       renderPractice();
@@ -369,11 +517,20 @@ function getCurrentScript() {
   return scripts.find(s => s.id === currentScriptId) || null;
 }
 
+function clearAudio() {
+  player.stop();
+  player.buffer = null;
+  player.ab = null;
+  words = null;
+  wordSpans = [];
+  activeWord = -1;
+  updateAbUi();
+}
+
 async function selectScript(id) {
   if (currentScriptId === id) return;
   currentScriptId = id;
-  player.stop();
-  player.buffer = null;
+  clearAudio();
   renderPractice();
   setStatus('');
 
@@ -382,10 +539,13 @@ async function selectScript(id) {
     if (!cached) setStatus('「音声を生成」を押してください');
     return;
   }
+
   try {
-    await player.load(cached.slice(0));
+    await player.load(cached.audio.slice(0));
     if (currentScriptId !== id) return;
-    setStatus('保存済みの音声を読み込みました');
+    words = buildWords(cached.alignment);
+    renderPractice();
+    setStatus(words ? '保存済みの音声を読み込みました' : '保存済みの音声を読み込みました(ハイライトなし)');
     onPlaybackChanged();
   } catch {
     setStatus('「音声を生成」を押してください');
@@ -412,7 +572,7 @@ function renderPractice() {
 
   const index = scripts.findIndex(s => s.id === script.id);
   document.getElementById('practice-position').textContent = `${index + 1} / ${scripts.length}`;
-  document.getElementById('practice-text').textContent = script.text;
+  renderScriptText(script);
   document.getElementById('practice-note').textContent = script.note || '';
   document.getElementById('practice-stats').textContent =
     `練習回数 ${script.practiceCount}回` +
@@ -429,6 +589,13 @@ function step(delta) {
 
 document.getElementById('btn-prev').addEventListener('click', () => step(-1));
 document.getElementById('btn-next').addEventListener('click', () => step(1));
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
 
 document.getElementById('btn-generate').addEventListener('click', async () => {
   const script = getCurrentScript();
@@ -448,15 +615,19 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   setStatus('ElevenLabsで音声を生成しています');
 
   try {
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${settings.voiceId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
-      body: JSON.stringify({
-        text: script.text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-      })
-    });
+    // with-timestamps also returns per-character timings, used for highlighting.
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${settings.voiceId}/with-timestamps`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
+        body: JSON.stringify({
+          text: script.text,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+        })
+      }
+    );
 
     if (!res.ok) {
       let detail = '';
@@ -467,12 +638,17 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
       throw new Error(`音声を生成できませんでした (${res.status})${detail ? ': ' + detail : ''}`);
     }
 
-    const arrayBuffer = await res.arrayBuffer();
+    const payload = await res.json();
     if (currentScriptId !== script.id) return;
 
-    await cachePut(script.id, arrayBuffer);
-    await player.load(arrayBuffer.slice(0)); // decodeAudioData detaches its input
-    setStatus('再生できます');
+    const audio = base64ToArrayBuffer(payload.audio_base64);
+    const alignment = payload.alignment || payload.normalized_alignment || null;
+
+    await cachePut(script.id, { audio, alignment });
+    await player.load(audio.slice(0)); // decodeAudioData detaches its input
+    words = buildWords(alignment);
+    renderPractice();
+    setStatus(words ? '再生できます' : '再生できます(ハイライトなし)');
     player.play();
   } catch (err) {
     setStatus('');
@@ -513,6 +689,59 @@ speedRange.addEventListener('input', () => {
 speedRange.addEventListener('change', () => player.setRate(parseFloat(speedRange.value)));
 
 document.getElementById('loop-toggle').addEventListener('change', e => player.setLoop(e.target.checked));
+
+// ---------- A-B repeat ----------
+
+let abStart = null;
+
+function updateAbUi() {
+  const btn = document.getElementById('btn-ab');
+  const clear = document.getElementById('btn-ab-clear');
+  if (player.ab) {
+    btn.textContent = `A-B ${formatTime(player.ab[0])} - ${formatTime(player.ab[1])}`;
+    btn.classList.add('armed');
+    clear.hidden = false;
+  } else if (abStart !== null) {
+    btn.textContent = `B地点を設定 (A: ${formatTime(abStart)})`;
+    btn.classList.add('armed');
+    clear.hidden = false;
+  } else {
+    btn.textContent = 'A-B区間リピート';
+    btn.classList.remove('armed');
+    clear.hidden = true;
+  }
+}
+
+document.getElementById('btn-ab').addEventListener('click', () => {
+  if (!player.buffer) {
+    toast('先に「音声を生成」を押してください');
+    return;
+  }
+  if (player.ab) return; // already looping; use 解除 to reset
+
+  const position = player.position();
+  if (abStart === null) {
+    abStart = position;
+    updateAbUi();
+    toast('A地点を設定しました');
+    return;
+  }
+  if (position <= abStart + 0.3) {
+    toast('B地点はA地点より後ろを指定してください', 'error');
+    return;
+  }
+  player.setAb([abStart, position]);
+  abStart = null;
+  updateAbUi();
+  toast('区間リピートを開始しました');
+});
+
+document.getElementById('btn-ab-clear').addEventListener('click', () => {
+  abStart = null;
+  player.setAb(null);
+  updateAbUi();
+  toast('区間リピートを解除しました');
+});
 
 document.getElementById('btn-mark-practiced').addEventListener('click', () => {
   const script = getCurrentScript();
@@ -561,8 +790,7 @@ document.getElementById('input-import').addEventListener('change', e => {
     try {
       const imported = JSON.parse(reader.result);
       if (!Array.isArray(imported)) throw new Error('形式が正しくありません');
-      const added = mergeScripts(imported);
-      toast(`${added}件を読み込みました`);
+      toast(`${mergeScripts(imported)}件を読み込みました`);
     } catch (err) {
       toast('読み込めませんでした: ' + err.message, 'error');
     }
@@ -592,19 +820,19 @@ function mergeScripts(incoming) {
 }
 
 document.getElementById('btn-clear-audio').addEventListener('click', async () => {
-  const ok = await cacheClear();
-  if (ok) {
-    player.stop();
-    player.buffer = null;
-    setStatus('「音声を生成」を押してください');
-    toast('保存済み音声を削除しました');
-  } else {
+  if (!(await cacheClear())) {
     toast('削除できませんでした', 'error');
+    return;
   }
+  clearAudio();
+  renderPractice();
+  setStatus('「音声を生成」を押してください');
+  toast('保存済み音声を削除しました');
 });
 
 // ---------- init ----------
 
 renderScriptList();
 renderPractice();
+updateAbUi();
 if (scripts.length > 0) selectScript(scripts[scripts.length - 1].id);
