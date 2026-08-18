@@ -204,6 +204,12 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   }
 });
 
+document.getElementById('btn-rewind').addEventListener('click', () => {
+  const player = document.getElementById('audio-player');
+  player.currentTime = Math.max(0, player.currentTime - 5);
+  player.play();
+});
+
 document.getElementById('speed-range').addEventListener('input', e => {
   const rate = parseFloat(e.target.value);
   document.getElementById('speed-value').textContent = `${rate.toFixed(2)}x`;
