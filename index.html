@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header class="app-header">
@@ -27,34 +27,25 @@
 
     <div id="practice-body" hidden>
       <div class="script-nav">
-        <button id="btn-prev" class="icon-btn" aria-label="前のスクリプト">‹</button>
+        <button id="btn-prev" class="nav-btn" aria-label="前のスクリプト">‹</button>
         <span id="practice-position"></span>
-        <button id="btn-next" class="icon-btn" aria-label="次のスクリプト">›</button>
+        <button id="btn-next" class="nav-btn" aria-label="次のスクリプト">›</button>
       </div>
 
-      <p id="practice-text" class="practice-text"></p>
-      <p class="word-hint" id="word-hint" hidden>単語をタップで頭出し、長押しで語彙</p>
-      <p id="practice-note" class="practice-note"></p>
-
-      <div class="translation-block">
-        <button id="btn-translate" class="translate-btn">日本語訳を表示</button>
+      <article class="script">
+        <p id="practice-text" class="practice-text"></p>
         <p id="practice-translation" class="practice-translation" hidden></p>
-      </div>
-
-      <div class="player">
-        <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="再生位置">
-        <div class="time-row">
-          <span id="time-current">0:00</span>
-          <span id="time-total">0:00</span>
+        <p id="practice-note" class="practice-note"></p>
+        <div class="script-meta">
+          <button id="btn-translate" class="link-btn">日本語訳を表示</button>
+          <span id="practice-stats" class="stats"></span>
         </div>
+        <p class="word-hint" id="word-hint" hidden>単語をタップで頭出し・長押しで語彙</p>
+      </article>
 
-        <div class="transport">
-          <button id="btn-rewind" class="round" aria-label="5秒戻る">−5<small>秒</small></button>
-          <button id="btn-playpause" class="round primary" aria-label="再生">▶</button>
-          <button id="btn-forward" class="round" aria-label="5秒進む">+5<small>秒</small></button>
-        </div>
-
-        <div class="player-options">
+      <!-- Controls sit in their own floating layer above the script. -->
+      <div class="dock">
+        <div id="dock-panel" class="dock-panel" hidden>
           <label class="speed">
             <span>速度 <output id="speed-value">1.00x</output></span>
             <input type="range" id="speed-range" min="0.5" max="1.25" step="0.05" value="1">
@@ -62,19 +53,31 @@
           <label class="switch">
             <input type="checkbox" id="loop-toggle"> リピート再生
           </label>
+          <div class="ab-row">
+            <button id="btn-ab" class="ab-btn">A-B区間リピート</button>
+            <button id="btn-ab-clear" class="ab-btn ghost" hidden>解除</button>
+          </div>
+          <button id="btn-mark-practiced" class="panel-btn">練習済みにする</button>
         </div>
 
-        <div class="ab-row">
-          <button id="btn-ab" class="ab-btn">A-B区間リピート</button>
-          <button id="btn-ab-clear" class="ab-btn ghost" hidden>解除</button>
+        <div class="dock-bar">
+          <div id="dock-playback" hidden>
+            <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="再生位置">
+            <div class="time-row">
+              <span id="time-current">0:00</span>
+              <span id="time-total">0:00</span>
+            </div>
+            <div class="transport">
+              <button id="btn-rewind" class="round" aria-label="5秒戻る">−5<small>秒</small></button>
+              <button id="btn-playpause" class="round primary" aria-label="再生">▶</button>
+              <button id="btn-forward" class="round" aria-label="5秒進む">+5<small>秒</small></button>
+              <button id="btn-more" class="round ghost" aria-label="その他の操作" aria-expanded="false">⋯</button>
+            </div>
+          </div>
+          <button id="btn-generate" class="wide">音声を生成</button>
+          <p id="player-status" class="player-status"></p>
         </div>
-
-        <button id="btn-generate" class="wide">音声を生成</button>
-        <p id="player-status" class="player-status"></p>
       </div>
-
-      <button id="btn-mark-practiced" class="wide secondary">練習済みにする</button>
-      <p id="practice-stats" class="stats"></p>
     </div>
   </section>
 
@@ -159,6 +162,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

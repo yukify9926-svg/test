@@ -661,6 +661,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
   if (tab === 'practice') renderPractice();
+  measureDock();
   window.scrollTo(0, 0);
 }
 
@@ -918,12 +919,59 @@ function setStatus(message) {
   setText('player-status', message);
 }
 
-// The generate button doubles as the way to re-make audio that predates
-// word timings, so its label follows what the current script already has.
+// What the dock offers depends on whether this script has audio yet: without
+// it the only useful action is generating, so that becomes the whole bar and
+// the transport stays out of the way. Once audio exists the transport takes
+// the bar and generating — now a re-make, including for audio old enough to
+// lack word timings — moves into the panel behind the ⋯ button.
 function updateGenerateButton() {
-  if (!player.buffer) setText('btn-generate', '音声を生成');
-  else if (words) setText('btn-generate', '音声を作り直す');
-  else setText('btn-generate', 'ハイライト付きで作り直す');
+  const btn = el('btn-generate');
+  if (!btn) return;
+
+  const hasAudio = !!player.buffer;
+  setHidden('dock-playback', !hasAudio);
+
+  // Audio from before word timings existed plays but cannot be highlighted,
+  // and the status line invites re-making it. That invitation needs its button
+  // in reach, so it stays in the bar rather than moving behind ⋯.
+  const inBar = !hasAudio || !words;
+  btn.textContent = !hasAudio ? '音声を生成'
+    : words ? '音声を作り直す'
+    : 'ハイライト付きで作り直す';
+  btn.classList.toggle('secondary', hasAudio);
+
+  btn.classList.toggle('wide', inBar);
+  btn.classList.toggle('panel-btn', !inBar);
+
+  const target = el(inBar ? 'dock-bar' : 'dock-panel');
+  if (target && btn.parentElement !== target) {
+    if (inBar) target.insertBefore(btn, el('player-status'));
+    else target.appendChild(btn);
+  }
+  measureDock();
+}
+
+// The script scrolls behind the dock, so the page needs to know how tall the
+// dock currently is to leave room under the text.
+function measureDock() {
+  const dock = document.querySelector('.dock');
+  const height = dock ? dock.offsetHeight : 0;
+  document.documentElement.style.setProperty('--dock-h', `${height}px`);
+}
+
+on('btn-more', 'click', () => {
+  const panel = el('dock-panel');
+  const btn = el('btn-more');
+  if (!panel || !btn) return;
+  const opening = panel.hidden;
+  panel.hidden = !opening;
+  btn.setAttribute('aria-expanded', String(opening));
+  measureDock();
+});
+
+if (window.ResizeObserver) {
+  const dock = document.querySelector('.dock');
+  if (dock) new ResizeObserver(measureDock).observe(dock);
 }
 
 function renderPractice() {
