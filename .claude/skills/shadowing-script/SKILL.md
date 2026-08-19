@@ -30,6 +30,12 @@ The app decides a line's role by looking at its characters: a line containing ka
 - **Keep Japanese out of the English lines.** Romanised names and Latin-alphabet loanwords are fine; kana or kanji in an English line makes the app read that line as a translation.
 - **Blank lines are structural.** They are the only thing separating items, so never use one for visual spacing inside a passage.
 
+### The line is what the reader touches
+
+A line is not just a formatting unit. During playback the line being spoken is the one that lights up, a tap on a line starts playback there, and holding a line shows *that line's* Japanese on its own.
+
+So the Nth Japanese line has to translate the Nth English line and nothing else. Merging two English sentences' meaning into one Japanese line, or letting a translation drift onto the neighbouring line, puts the wrong Japanese under a sentence — and because each is only ever seen alone, the mismatch is invisible until it misleads. Keep the two columns in step, one line for one line, even where Japanese would rather reorder or combine.
+
 ## Producing the output
 
 Put the finished block in a fenced code block and nothing else inside it — no commentary, no numbering, no speaker labels, no headings. The user copies the block with one tap and pastes it straight into the app, so anything extra becomes a script they have to delete by hand.
@@ -88,6 +94,8 @@ When the user supplies both languages, their translation is the one to keep. Ref
 **Long passages.** Format the whole thing, grouped into paragraph-sized items. Only summarise or excerpt if the user asks.
 
 **One recording per item.** Each item is sent to the speech API as a single request, so a long item costs one generation rather than several — but it also means an item cannot be regenerated in parts.
+
+**A missing translation is recoverable.** The reader can generate the Japanese for one line from inside the app, so English-only output is a usable result rather than a broken one. Supply the translation anyway unless the user asked for English alone.
 
 ## Example
 
