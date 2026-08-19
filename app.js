@@ -9,10 +9,8 @@ let currentScriptId = null;
 let seeking = false;
 let filter = '';
 
-// Word timings for the script currently loaded in the player.
+// Speech timings for the script currently loaded in the player.
 let words = null;      // [{ text, start, end, space }]
-let wordSpans = [];    // element per words index (null for whitespace)
-let activeWord = -1;
 
 // ---------- DOM helpers ----------
 // A cached index.html can outlive its app.js on mobile, and a single missing
@@ -70,16 +68,12 @@ function saveScripts() {
 }
 
 function loadSettings() {
-  const empty = { apiKey: '', voiceId: '', claudeKey: '', lookup: 'native' };
+  const empty = { apiKey: '', voiceId: '', claudeKey: '', lookup: 'sentence' };
   try {
     return Object.assign(empty, JSON.parse(localStorage.getItem(SETTINGS_KEY)));
   } catch {
     return empty;
   }
-}
-
-function nativeLookup() {
-  return settings.lookup !== 'claude';
 }
 
 function saveSettings() {
@@ -197,25 +191,6 @@ function fetchTranslation(text) {
       type: 'object',
       properties: { translation: { type: 'string', description: '英文全体の日本語訳' } },
       required: ['translation'],
-      additionalProperties: false
-    }
-  );
-}
-
-function fetchVocab(word, sentence) {
-  return askClaude(
-    `英語学習者向けに、文中の語を解説してください。辞書的な語義の羅列ではなく、この文脈での意味を中心に説明してください。\n\n文: ${sentence}\n対象の語: ${word}`,
-    {
-      type: 'object',
-      properties: {
-        base: { type: 'string', description: '見出し語(原形)。句動詞やイディオムの一部ならその全体' },
-        pos: { type: 'string', description: '品詞を日本語で(例: 動詞、名詞、形容詞、句動詞)' },
-        meaning: { type: 'string', description: 'この文脈での意味を日本語で簡潔に' },
-        note: { type: 'string', description: 'ニュアンス、使いどころ、類義語との違いなどを1〜2文で' },
-        example: { type: 'string', description: 'この語を使った別の平易な英語例文を1つ' },
-        exampleJa: { type: 'string', description: 'その例文の日本語訳' }
-      },
-      required: ['base', 'pos', 'meaning', 'note', 'example', 'exampleJa'],
       additionalProperties: false
     }
   );
@@ -405,7 +380,14 @@ function tick() {
 }
 requestAnimationFrame(tick);
 
-// ---------- word highlighting ----------
+// ---------- sentences ----------
+// A line of the script is one sentence (or one turn of a conversation), and it
+// is the unit for everything the reader touches: what lights up during
+// playback, what a tap seeks to, and what a hold explains.
+
+let lines = [];      // [{ text, translation, start, end }]
+let lineSpans = [];
+let activeLine = -1;
 
 function buildWords(alignment) {
   if (!alignment || !Array.isArray(alignment.characters)) return null;
@@ -430,70 +412,84 @@ function buildWords(alignment) {
   return result.some(w => !w.space) ? result : null;
 }
 
+// The spoken text carries the same newlines as the script, so the timings
+// group into lines the same way the text does.
+function timeLines(tokens) {
+  const grouped = [];
+  let current = null;
+  tokens.forEach(token => {
+    if (token.space) {
+      if (token.text.includes('\n') && current) { grouped.push(current); current = null; }
+      return;
+    }
+    if (!current) current = { start: token.start, end: token.end };
+    current.end = token.end;
+  });
+  if (current) grouped.push(current);
+  return grouped;
+}
+
 function renderScriptText(script) {
   const container = el('practice-text');
   if (!container) return;
+
+  const texts = script.text.split('\n');
+  const translations = (script.translation || '').split('\n');
+  const timed = words ? timeLines(words) : null;
+  // Only trust the timings when they describe the same number of lines as the
+  // text; otherwise show the script and leave the highlight off.
+  const timings = timed && timed.length === texts.length ? timed : null;
+
+  lines = texts.map((text, i) => ({
+    text,
+    translation: translations[i] || '',
+    start: timings ? timings[i].start : null,
+    end: timings ? timings[i].end : null
+  }));
+
   container.innerHTML = '';
-  wordSpans = [];
-  activeWord = -1;
+  lineSpans = [];
+  activeLine = -1;
 
-  container.classList.toggle('native-lookup', nativeLookup());
-
-  if (!words) {
-    container.textContent = script.text;
-    container.classList.remove('has-words');
-    return;
-  }
-
-  container.classList.add('has-words');
-  words.forEach((word, index) => {
-    if (word.space) {
-      container.appendChild(document.createTextNode(word.text));
-      wordSpans.push(null);
-      return;
-    }
+  lines.forEach((line, i) => {
     const span = document.createElement('span');
-    span.className = 'word';
-    span.textContent = word.text;
-    span.dataset.index = String(index);
+    span.className = 'line';
+    span.dataset.line = String(i);
+    span.textContent = line.text;
     container.appendChild(span);
-    wordSpans.push(span);
+    lineSpans.push(span);
   });
+
+  container.classList.toggle('has-timings', !!timings);
+  container.classList.toggle('native-lookup', settings.lookup === 'native');
 }
 
-function findWord(position) {
-  if (!words) return -1;
-  // Most lookups land on the active word or the one after it.
-  for (let i = Math.max(0, activeWord); i < words.length; i++) {
-    const word = words[i];
-    if (word.space) continue;
-    if (position < word.start) break;
-    if (position <= word.end) return i;
-  }
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    if (!word.space && position >= word.start && position <= word.end) return i;
+function findLine(position) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.start === null) continue;
+    if (position >= line.start && position <= line.end) return i;
   }
   return -1;
 }
 
 function updateHighlight(position) {
-  if (!words) return;
-  const index = findWord(position);
-  if (index === activeWord) return;
-  if (wordSpans[activeWord]) wordSpans[activeWord].classList.remove('active');
+  if (!lines.length) return;
+  const index = findLine(position);
+  if (index === activeLine) return;
+  if (lineSpans[activeLine]) lineSpans[activeLine].classList.remove('active');
 
-  const span = wordSpans[index];
+  const span = lineSpans[index];
   if (span) {
     span.classList.add('active');
     // A passage long enough to scroll would otherwise leave the reader
     // following audio they can no longer see.
     if (player.playing) span.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
-  activeWord = index;
+  activeLine = index;
 }
 
-// Tap a word to seek to it; press and hold to look it up. The hold must not
+// Tap a sentence to start there; hold it for the translation. The hold must not
 // also fire the tap, so the click that follows a long press is swallowed.
 const LONG_PRESS_MS = 450;
 let pressTimer = null;
@@ -507,17 +503,17 @@ function cancelPress() {
 }
 
 on('practice-text', 'pointerdown', e => {
-  const span = e.target.closest('.word');
+  const span = e.target.closest('.line');
   longPressFired = false;
-  // Under native lookup the hold belongs to iOS: intercepting it here would
-  // stop the selection that raises 調べる and 翻訳.
-  if (!span || nativeLookup()) return;
+  // Under the system lookup the hold belongs to iOS: intercepting it here
+  // would stop the selection that raises 調べる and 翻訳.
+  if (!span || settings.lookup === 'native') return;
   pressOrigin = { x: e.clientX, y: e.clientY };
   clearTimeout(pressTimer);
   pressTimer = setTimeout(() => {
     pressTimer = null;
     longPressFired = true;
-    openVocab(span);
+    openSheet(Number(span.dataset.line));
   }, LONG_PRESS_MS);
 });
 
@@ -531,142 +527,89 @@ on('practice-text', 'pointermove', e => {
 });
 
 on('practice-text', 'contextmenu', e => {
-  if (e.target.closest('.word') && !nativeLookup()) e.preventDefault();
+  if (e.target.closest('.line') && settings.lookup !== 'native') e.preventDefault();
 });
 
 on('practice-text', 'click', e => {
-  const span = e.target.closest('.word');
-  if (!span) return;
-  if (longPressFired) return; // the hold already handled this press
+  const span = e.target.closest('.line');
+  if (!span || longPressFired) return;
   // A tap that lands on a selection is the user dismissing it, not a seek.
-  if (nativeLookup() && !window.getSelection().isCollapsed) return;
-  if (!words) return;
-  const word = words[Number(span.dataset.index)];
-  if (!word) return;
-  player.seek(word.start);
+  if (settings.lookup === 'native' && !window.getSelection().isCollapsed) return;
+  const line = lines[Number(span.dataset.line)];
+  if (!line || line.start === null) return;
+  player.seek(line.start);
   if (!player.playing) player.play();
 });
 
-// ---------- vocabulary sheet ----------
+// ---------- sentence sheet ----------
 
-function stripPunctuation(text) {
-  return text.replace(/^[^\p{L}\p{N}'’-]+|[^\p{L}\p{N}'’-]+$/gu, '');
-}
+let sheetLine = -1;
 
-function closeVocab() {
+function closeSheet() {
   setHidden('vocab-sheet', true);
   setHidden('sheet-backdrop', true);
+  sheetLine = -1;
 }
 
-on('vocab-close', 'click', closeVocab);
-on('sheet-backdrop', 'click', closeVocab);
+on('vocab-close', 'click', closeSheet);
+on('sheet-backdrop', 'click', closeSheet);
+
+function renderSheet() {
+  const line = lines[sheetLine];
+  if (!line) return;
+
+  // The English is left selectable so iOS's own 調べる and 翻訳 stay reachable
+  // for a single word, even while a hold on the script opens this sheet.
+  let body = `<p class="sheet-en">${escapeHtml(line.text)}</p>`;
+
+  if (line.translation) {
+    body += `<p class="sheet-ja">${escapeHtml(line.translation)}</p>`;
+  } else if (settings.claudeKey) {
+    body += '<p class="sheet-note">和訳が登録されていません。</p>' +
+      '<button id="btn-translate-line" class="panel-btn">この文の和訳を生成</button>';
+  } else {
+    body += '<p class="sheet-note">和訳が登録されていません。スクリプト追加時に和訳を書くか、設定でAnthropic API Keyを入力すると生成できます。</p>';
+  }
+
+  setVocabBody(body);
+  on('btn-translate-line', 'click', translateLine);
+}
+
+function openSheet(index) {
+  const sheet = el('vocab-sheet');
+  if (!sheet || !lines[index]) return;
+  sheetLine = index;
+  setText('vocab-word', `${index + 1} / ${lines.length}`);
+  sheet.hidden = false;
+  setHidden('sheet-backdrop', false);
+  renderSheet();
+}
+
+async function translateLine() {
+  const script = getCurrentScript();
+  const line = lines[sheetLine];
+  if (!script || !line) return;
+
+  const index = sheetLine;
+  setVocabBody(`<p class="sheet-en">${escapeHtml(line.text)}</p><p class="sheet-note">翻訳中…</p>`);
+  try {
+    const { translation } = await fetchTranslation(line.text);
+    line.translation = translation;
+    const parts = (script.translation || '').split('\n');
+    while (parts.length < lines.length) parts.push('');
+    parts[index] = translation;
+    script.translation = parts.join('\n');
+    saveScripts();
+    if (sheetLine === index) renderSheet();
+  } catch (err) {
+    setVocabBody(`<p class="sheet-en">${escapeHtml(line.text)}</p><p class="sheet-note">${escapeHtml(err.message)}</p>`);
+  }
+}
 
 function setVocabBody(html) {
   const body = el('vocab-body');
   if (body) body.innerHTML = html;
 }
-
-function renderVocab(entry) {
-  setVocabBody(`
-    <p class="vocab-pos">${escapeHtml(entry.pos)}</p>
-    <p class="vocab-meaning">${escapeHtml(entry.meaning)}</p>
-    ${entry.note ? `<p class="vocab-note">${escapeHtml(entry.note)}</p>` : ''}
-    <div class="vocab-example">
-      <p class="vocab-example-en">${escapeHtml(entry.example)}</p>
-      <p class="vocab-example-ja">${escapeHtml(entry.exampleJa)}</p>
-    </div>`);
-}
-
-async function openVocab(span) {
-  const script = getCurrentScript();
-  const sheet = el('vocab-sheet');
-  if (!script || !sheet) return;
-
-  const word = stripPunctuation(span.textContent);
-  if (!word) return;
-
-  setText('vocab-word', word);
-  sheet.hidden = false;
-  setHidden('sheet-backdrop', false);
-
-  const key = word.toLowerCase();
-  const cached = script.vocab && script.vocab[key];
-  if (cached) {
-    setText('vocab-word', cached.base || word);
-    renderVocab(cached);
-    return;
-  }
-
-  if (!settings.claudeKey) {
-    setVocabBody('<p class="vocab-note">「設定」タブでAnthropic API Keyを入力すると、語彙の解説が表示されます。</p>');
-    return;
-  }
-
-  setVocabBody('<p class="vocab-note">調べています…</p>');
-  try {
-    const entry = await fetchVocab(word, script.text);
-    script.vocab = script.vocab || {};
-    script.vocab[key] = entry;
-    saveScripts();
-    if (sheet.hidden) return;
-    setText('vocab-word', entry.base || word);
-    renderVocab(entry);
-  } catch (err) {
-    setVocabBody(`<p class="vocab-note">${escapeHtml(err.message)}</p>`);
-  }
-}
-
-// ---------- translation ----------
-
-let translationVisible = true;
-
-function renderTranslation(script) {
-  const btn = el('btn-translate');
-  const text = el('practice-translation');
-  if (!btn || !text) return;
-
-  btn.hidden = false;
-  if (!script.translation) {
-    text.hidden = true;
-    btn.textContent = '日本語訳を表示';
-    return;
-  }
-  text.textContent = script.translation;
-  text.hidden = !translationVisible;
-  btn.textContent = translationVisible ? '日本語訳を隠す' : '日本語訳を表示';
-}
-
-on('btn-translate', 'click', async () => {
-  const script = getCurrentScript();
-  if (!script) return;
-
-  if (script.translation) {
-    translationVisible = !translationVisible;
-    renderTranslation(script);
-    return;
-  }
-
-  if (!settings.claudeKey) {
-    toast('和訳が未登録です。追加時に和訳を貼るか、設定タブでAnthropic API Keyを入力してください', 'error');
-    return;
-  }
-
-  const btn = document.getElementById('btn-translate');
-  btn.disabled = true;
-  btn.textContent = '翻訳中...';
-  try {
-    const { translation } = await fetchTranslation(script.text);
-    script.translation = translation;
-    saveScripts();
-    translationVisible = true;
-    renderTranslation(script);
-  } catch (err) {
-    toast(err.message, 'error');
-    renderTranslation(script);
-  } finally {
-    btn.disabled = false;
-  }
-});
 
 // ---------- tabs ----------
 
@@ -913,8 +856,9 @@ function clearAudio() {
   player.buffer = null;
   player.ab = null;
   words = null;
-  wordSpans = [];
-  activeWord = -1;
+  lines = [];
+  lineSpans = [];
+  activeLine = -1;
   updateAbUi();
   updateGenerateButton();
 }
@@ -1020,11 +964,10 @@ function renderPractice() {
   const index = scripts.findIndex(s => s.id === script.id);
   setText('practice-position', `${index + 1} / ${scripts.length}`);
   renderScriptText(script);
-  setHidden('word-hint', !words);
-  setText('word-hint', nativeLookup()
-    ? '単語をタップで頭出し・長押しで「調べる」「翻訳」'
-    : '単語をタップで頭出し・長押しで語彙');
-  renderTranslation(script);
+  setHidden('script-hint', false);
+  setText('script-hint', settings.lookup === 'native'
+    ? '文をタップで頭出し・長押しで「調べる」「翻訳」'
+    : '文をタップで頭出し・長押しで和訳');
   setText('practice-note', script.note || '');
   setText('practice-stats',
     `練習回数 ${script.practiceCount}回` +
@@ -1233,14 +1176,14 @@ on('btn-mark-practiced', 'click', () => {
 setValue('input-api-key', settings.apiKey || '');
 setValue('input-voice-id', settings.voiceId || '');
 setValue('input-claude-key', settings.claudeKey || '');
-setValue('input-lookup', settings.lookup || 'native');
+setValue('input-lookup', settings.lookup || 'sentence');
 
 on('settings-form', 'submit', e => {
   e.preventDefault();
   settings.apiKey = getValue('input-api-key').trim();
   settings.voiceId = getValue('input-voice-id').trim();
   settings.claudeKey = getValue('input-claude-key').trim();
-  settings.lookup = getValue('input-lookup') || 'native';
+  settings.lookup = getValue('input-lookup') || 'sentence';
   saveSettings();
   renderPractice();
   document.activeElement?.blur();

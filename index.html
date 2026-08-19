@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header class="app-header">
@@ -34,13 +34,11 @@
 
       <article class="script">
         <p id="practice-text" class="practice-text"></p>
-        <p id="practice-translation" class="practice-translation" hidden></p>
         <p id="practice-note" class="practice-note"></p>
         <div class="script-meta">
-          <button id="btn-translate" class="link-btn">日本語訳を表示</button>
+          <p class="script-hint" id="script-hint" hidden></p>
           <span id="practice-stats" class="stats"></span>
         </div>
-        <p class="word-hint" id="word-hint" hidden>単語をタップで頭出し・長押しで語彙</p>
       </article>
 
       <!-- Controls sit in their own floating layer above the script. -->
@@ -122,15 +120,16 @@
         <input type="text" id="input-voice-id" placeholder="My Voices からコピーしたID" autocomplete="off">
       </label>
 
-      <h2>単語の長押し</h2>
-      <label>調べ方
+      <h2>文の長押し</h2>
+      <label>長押ししたときの動作
         <select id="input-lookup">
+          <option value="sentence">その文の和訳を表示</option>
           <option value="native">iPhoneの「調べる」「翻訳」を使う</option>
-          <option value="claude">Claudeの語彙解説を使う</option>
         </select>
       </label>
       <p class="hint">
-        iPhoneの辞書で和訳を出すには、iOSの<strong>設定 → 一般 → 辞書</strong>で「ウィズダム英和辞典」などの英和辞典にチェックを入れてください。未設定だと英英の語義だけが表示されます。長押しメニューの「翻訳」は辞書の設定なしで使えます。
+        和訳のパネルでは英文を選択できるので、そこから単語を長押しすればiPhoneの「調べる」「翻訳」も使えます。<br>
+        iPhoneの辞書で和訳を出すには、iOSの<strong>設定 → 一般 → 辞書</strong>で「ウィズダム英和辞典」などの英和辞典にチェックを入れてください。長押しメニューの「翻訳」は辞書の設定なしで使えます。
       </p>
 
       <h2>Claude API(日本語訳・語彙)</h2>
@@ -177,6 +176,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

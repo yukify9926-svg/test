@@ -169,19 +169,18 @@ main {
   font-weight: 500;
   margin: 0 0 1.1rem;
   text-wrap: pretty;
-  /* Turns in a conversation are line breaks in the script itself. */
-  white-space: pre-wrap;
 }
 
-.practice-text.has-words { cursor: pointer; }
+.practice-text.has-timings .line { cursor: pointer; }
 
-.word {
-  display: inline-block;
-  padding: 0 3px;
-  margin: 0 -3px;
-  border-radius: 6px;
-  transition: background-color 90ms linear, color 90ms linear;
-  /* Suppressed so a hold can raise the app's own lookup instead. */
+/* One sentence, or one turn of a conversation. */
+.line {
+  display: block;
+  padding: 0.28rem 0.4rem;
+  margin: 0 -0.4rem 0.15rem;
+  border-radius: 9px;
+  transition: background-color 140ms linear, color 140ms linear;
+  /* Suppressed so a hold opens the translation instead of a selection. */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -189,29 +188,19 @@ main {
 
 /* iOS offers 調べる and 翻訳 from the selection callout, and there is no way to
    summon that sheet from script — a hold has to reach the text itself. */
-.practice-text.native-lookup .word {
+.practice-text.native-lookup .line {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
 }
 
-.word.active {
-  background: var(--accent);
-  color: var(--on-accent);
+.line.active {
+  background: var(--accent-soft);
+  color: var(--text);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.word:active { background: var(--accent-soft); }
-.word.active:active { background: var(--accent-hover); }
-
-.practice-translation {
-  margin: 0 0 1.1rem;
-  padding-top: 1.1rem;
-  border-top: 1px solid var(--border);
-  font-size: 1.06rem;
-  line-height: 1.75;
-  color: var(--text-2);
-  white-space: pre-wrap;
-}
+.line:active { background: var(--accent-soft); }
 
 .practice-note {
   margin: 0 0 1.1rem;
@@ -243,8 +232,8 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-.word-hint {
-  margin: 0.9rem 0 0;
+.script-hint {
+  margin: 0;
   font-size: 0.74rem;
   color: var(--muted-2);
 }
@@ -708,6 +697,29 @@ form h2 { margin-top: 0; }
 .icon-btn:active { background: var(--accent-soft); color: var(--accent); }
 
 .sheet-body p { margin: 0 0 0.7rem; }
+
+/* Selectable, so iOS's own lookup is still reachable for a single word. */
+.sheet-en {
+  font-size: 1.15rem;
+  line-height: 1.55;
+  font-weight: 500;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.sheet-ja {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+
+.sheet-note {
+  color: var(--muted);
+  font-size: 0.87rem;
+  line-height: 1.6;
+}
 
 .vocab-pos {
   display: inline-block;
