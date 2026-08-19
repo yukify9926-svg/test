@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="app-header">
@@ -82,16 +82,13 @@
   <section id="tab-list" class="tab-panel">
     <form id="script-form">
       <h2>例文・表現を追加</h2>
-      <label>英語スクリプト
-        <textarea id="input-text" rows="4" placeholder="長い文章を貼り付けてもかまいません。" required></textarea>
+      <label>スクリプト
+        <textarea id="input-text" rows="8" placeholder="I've been meaning to reach out to you.&#10;ずっと連絡しようと思っていました。&#10;&#10;Let's circle back next week.&#10;来週また改めて話しましょう。" required></textarea>
       </label>
-      <label>日本語訳(任意)
-        <textarea id="input-ja" rows="4" placeholder="お持ちの和訳を貼り付けると併記表示されます。"></textarea>
-      </label>
+      <p class="hint form-hint">英文の次の行に和訳を書くと対応させて登録します。ペアの間の空行は任意。和訳なし(英文だけ)でも登録できます。</p>
       <label class="switch inline">
-        <input type="checkbox" id="input-split" checked> 文ごとに分けて登録する
+        <input type="checkbox" id="input-split" checked> 1行に複数の文があるときは文ごとに分ける
       </label>
-      <p class="hint form-hint">改行があれば行ごとに、なければ文ごとに分割します。英文と和訳は上から順に対応させます。</p>
       <label>意味・メモ(任意)
         <input type="text" id="input-note" placeholder="ずっと連絡しようと思っていた">
       </label>
@@ -162,6 +159,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

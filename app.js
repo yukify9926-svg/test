@@ -687,6 +687,44 @@ function splitJapanese(text) {
   return splitLines(text) || splitByPunctuation(text, /[^。！？.!?]+[。！？.!?]*[」』）]*\s*/g);
 }
 
+// Hiragana, katakana and CJK ideographs. A line carrying any of these is the
+// translation; everything else is treated as the English side.
+const JAPANESE_CHARS = /[぀-ゟ゠-ヿ㐀-䶿一-鿿豈-﫿]/;
+
+function isJapanese(line) {
+  return JAPANESE_CHARS.test(line);
+}
+
+// Reads one pasted block holding both languages. Two arrangements are accepted
+// because they cannot be confused: English and Japanese alternating line by
+// line, or every English line followed by the same number of Japanese lines.
+function parseCombined(text) {
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  if (!lines.length) return [];
+
+  const japanese = lines.map(isJapanese);
+  if (japanese[0]) return { orphan: lines[0] };
+
+  const firstJa = japanese.indexOf(true);
+  const blockPaired = firstJa > 1 &&
+    japanese.slice(firstJa).every(Boolean) &&
+    firstJa === lines.length - firstJa;
+  if (blockPaired) {
+    return lines.slice(0, firstJa).map((text, i) => ({ text, translation: lines[firstJa + i] }));
+  }
+
+  const pairs = [];
+  lines.forEach(line => {
+    if (!isJapanese(line)) {
+      pairs.push({ text: line, translation: '' });
+      return;
+    }
+    const last = pairs[pairs.length - 1];
+    last.translation = last.translation ? `${last.translation} ${line}` : line;
+  });
+  return pairs;
+}
+
 // Pairs English with a supplied translation. Returns null when the two sides
 // have different counts, since guessing an alignment would mislabel lines.
 function pairScripts(english, japanese) {
@@ -699,22 +737,28 @@ function pairScripts(english, japanese) {
 
 on('script-form', 'submit', e => {
   e.preventDefault();
-  const english = getValue('input-text').trim();
-  if (!english) return;
+  const raw = getValue('input-text').trim();
+  if (!raw) return;
 
-  const japanese = getValue('input-ja').trim();
   const note = getValue('input-note').trim();
   const tags = getValue('input-tags').split(',').map(t => t.trim()).filter(Boolean);
 
-  let parts;
-  if (isChecked('input-split')) {
-    parts = pairScripts(english, japanese);
-    if (parts.mismatch) {
-      toast(`英文${parts.mismatch.en}件に対し和訳${parts.mismatch.ja}件で数が合いません。区切りを揃えてください`, 'error');
+  let parts = parseCombined(raw);
+  if (parts.orphan) {
+    toast('英文から始めてください。和訳は英文の次の行に書きます', 'error');
+    return;
+  }
+  if (!parts.length) return;
+
+  // A single line may still hold several sentences; the line breaks are the
+  // delimiter whenever the paste has more than one.
+  if (parts.length === 1 && isChecked('input-split')) {
+    const paired = pairScripts(parts[0].text, parts[0].translation);
+    if (paired.mismatch) {
+      toast(`英文${paired.mismatch.en}件に対し和訳${paired.mismatch.ja}件で数が合いません。区切りを揃えてください`, 'error');
       return;
     }
-  } else {
-    parts = [{ text: english, translation: japanese }];
+    parts = paired;
   }
 
   parts.forEach(part => {
@@ -732,7 +776,6 @@ on('script-form', 'submit', e => {
 
   saveScripts();
   setValue('input-text', '');
-  setValue('input-ja', '');
   setValue('input-note', '');
   document.activeElement?.blur();
   renderScriptList();
