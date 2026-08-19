@@ -236,6 +236,12 @@ const player = {
     if (!this.ctx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new Ctx();
+      // iOS starts a page in an ambient session, where the ringer switch
+      // silences Web Audio (an <audio> element would have been exempt).
+      // Declaring playback asks for a session that is not tied to the ringer.
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      } catch { /* not supported — the ringer switch then applies */ }
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     return this.ctx;
@@ -1044,6 +1050,16 @@ function seekFraction() {
 ['pointerdown', 'touchstart'].forEach(type => {
   on('seek', type, () => { seeking = true; });
 });
+
+// Releasing has to clear the flag on its own. Touching the slider without
+// moving it — brushing past while scrolling, tapping where the thumb already
+// sits — fires no change event, and the flag used to latch on there and freeze
+// the bar for the rest of the session. Listening on the window also covers a
+// release that happens away from the slider.
+['pointerup', 'pointercancel', 'touchend', 'touchcancel'].forEach(type => {
+  window.addEventListener(type, () => { seeking = false; });
+});
+
 on('seek', 'input', () => {
   seeking = true;
   setText('time-current', formatTime(seekFraction() * player.duration));
