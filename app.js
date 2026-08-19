@@ -70,12 +70,16 @@ function saveScripts() {
 }
 
 function loadSettings() {
-  const empty = { apiKey: '', voiceId: '', claudeKey: '' };
+  const empty = { apiKey: '', voiceId: '', claudeKey: '', lookup: 'native' };
   try {
     return Object.assign(empty, JSON.parse(localStorage.getItem(SETTINGS_KEY)));
   } catch {
     return empty;
   }
+}
+
+function nativeLookup() {
+  return settings.lookup !== 'claude';
 }
 
 function saveSettings() {
@@ -433,6 +437,8 @@ function renderScriptText(script) {
   wordSpans = [];
   activeWord = -1;
 
+  container.classList.toggle('native-lookup', nativeLookup());
+
   if (!words) {
     container.textContent = script.text;
     container.classList.remove('has-words');
@@ -496,7 +502,9 @@ function cancelPress() {
 on('practice-text', 'pointerdown', e => {
   const span = e.target.closest('.word');
   longPressFired = false;
-  if (!span) return;
+  // Under native lookup the hold belongs to iOS: intercepting it here would
+  // stop the selection that raises 調べる and 翻訳.
+  if (!span || nativeLookup()) return;
   pressOrigin = { x: e.clientX, y: e.clientY };
   clearTimeout(pressTimer);
   pressTimer = setTimeout(() => {
@@ -516,13 +524,15 @@ on('practice-text', 'pointermove', e => {
 });
 
 on('practice-text', 'contextmenu', e => {
-  if (e.target.closest('.word')) e.preventDefault();
+  if (e.target.closest('.word') && !nativeLookup()) e.preventDefault();
 });
 
 on('practice-text', 'click', e => {
   const span = e.target.closest('.word');
   if (!span) return;
   if (longPressFired) return; // the hold already handled this press
+  // A tap that lands on a selection is the user dismissing it, not a seek.
+  if (nativeLookup() && !window.getSelection().isCollapsed) return;
   if (!words) return;
   const word = words[Number(span.dataset.index)];
   if (!word) return;
@@ -990,6 +1000,9 @@ function renderPractice() {
   setText('practice-position', `${index + 1} / ${scripts.length}`);
   renderScriptText(script);
   setHidden('word-hint', !words);
+  setText('word-hint', nativeLookup()
+    ? '単語をタップで頭出し・長押しで「調べる」「翻訳」'
+    : '単語をタップで頭出し・長押しで語彙');
   renderTranslation(script);
   setText('practice-note', script.note || '');
   setText('practice-stats',
@@ -1199,13 +1212,16 @@ on('btn-mark-practiced', 'click', () => {
 setValue('input-api-key', settings.apiKey || '');
 setValue('input-voice-id', settings.voiceId || '');
 setValue('input-claude-key', settings.claudeKey || '');
+setValue('input-lookup', settings.lookup || 'native');
 
 on('settings-form', 'submit', e => {
   e.preventDefault();
   settings.apiKey = getValue('input-api-key').trim();
   settings.voiceId = getValue('input-voice-id').trim();
   settings.claudeKey = getValue('input-claude-key').trim();
+  settings.lookup = getValue('input-lookup') || 'native';
   saveSettings();
+  renderPractice();
   document.activeElement?.blur();
   toast('設定を保存しました');
 });

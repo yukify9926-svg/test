@@ -179,9 +179,18 @@ main {
   margin: 0 -3px;
   border-radius: 6px;
   transition: background-color 90ms linear, color 90ms linear;
+  /* Suppressed so a hold can raise the app's own lookup instead. */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* iOS offers 調べる and 翻訳 from the selection callout, and there is no way to
+   summon that sheet from script — a hold has to reach the text itself. */
+.practice-text.native-lookup .word {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .word.active {
@@ -748,4 +757,17 @@ form h2 { margin-top: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; }
+}
+
+select {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-small);
+  font: inherit;
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--text);
 }

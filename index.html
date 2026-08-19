@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header class="app-header">
@@ -118,8 +118,19 @@
         <input type="text" id="input-voice-id" placeholder="My Voices からコピーしたID" autocomplete="off">
       </label>
 
+      <h2>単語の長押し</h2>
+      <label>調べ方
+        <select id="input-lookup">
+          <option value="native">iPhoneの「調べる」「翻訳」を使う</option>
+          <option value="claude">Claudeの語彙解説を使う</option>
+        </select>
+      </label>
+      <p class="hint">
+        iPhoneの辞書で和訳を出すには、iOSの<strong>設定 → 一般 → 辞書</strong>で「ウィズダム英和辞典」などの英和辞典にチェックを入れてください。未設定だと英英の語義だけが表示されます。長押しメニューの「翻訳」は辞書の設定なしで使えます。
+      </p>
+
       <h2>Claude API(日本語訳・語彙)</h2>
-      <p class="hint">入力すると日本語訳と単語の語彙解説が使えます。空のままでも音声機能は動きます。</p>
+      <p class="hint">入力すると日本語訳と、上で「Claudeの語彙解説」を選んだときの語彙解説が使えます。空のままでも音声機能は動きます。</p>
       <label>Anthropic API Key
         <input type="password" id="input-claude-key" placeholder="sk-ant-..." autocomplete="off">
       </label>
@@ -162,6 +173,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
