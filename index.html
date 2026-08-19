@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <header class="app-header">
@@ -60,7 +60,7 @@
           <button id="btn-mark-practiced" class="panel-btn">練習済みにする</button>
         </div>
 
-        <div class="dock-bar">
+        <div id="dock-bar" class="dock-bar">
           <div id="dock-playback" hidden>
             <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="再生位置">
             <div class="time-row">
@@ -173,6 +173,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
