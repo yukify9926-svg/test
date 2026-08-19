@@ -537,9 +537,15 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .switch.inline {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   color: var(--text);
   font-size: 0.9rem;
+}
+
+.form-hint {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 
 .player-status {

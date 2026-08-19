@@ -624,8 +624,7 @@ on('btn-translate', 'click', async () => {
   }
 
   if (!settings.claudeKey) {
-    toast('「設定」タブでAnthropic API Keyを入力してください', 'error');
-    switchTab('settings');
+    toast('和訳が未登録です。追加時に和訳を貼るか、設定タブでAnthropic API Keyを入力してください', 'error');
     return;
   }
 
@@ -663,30 +662,66 @@ on('btn-goto-list', 'click', () => switchTab('list'));
 
 // ---------- script list ----------
 
-function splitSentences(text) {
+// Splitting follows the shape of what was pasted: line-per-sentence transcripts
+// split on newlines, a flowing paragraph splits on sentence punctuation.
+function splitByPunctuation(text, pattern) {
   const out = [];
-  const re = /[^.!?…]+[.!?…]*["')\]]*\s*/g;
   let match;
-  while ((match = re.exec(text)) !== null) {
+  while ((match = pattern.exec(text)) !== null) {
     const sentence = match[0].trim();
     if (sentence) out.push(sentence);
   }
   return out.length ? out : [text.trim()];
 }
 
+function splitLines(text) {
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  return lines.length > 1 ? lines : null;
+}
+
+function splitEnglish(text) {
+  return splitLines(text) || splitByPunctuation(text, /[^.!?…]+[.!?…]*["')\]]*\s*/g);
+}
+
+function splitJapanese(text) {
+  return splitLines(text) || splitByPunctuation(text, /[^。！？.!?]+[。！？.!?]*[」』）]*\s*/g);
+}
+
+// Pairs English with a supplied translation. Returns null when the two sides
+// have different counts, since guessing an alignment would mislabel lines.
+function pairScripts(english, japanese) {
+  const en = splitEnglish(english);
+  if (!japanese) return en.map(text => ({ text, translation: '' }));
+  const ja = splitJapanese(japanese);
+  if (ja.length !== en.length) return { mismatch: { en: en.length, ja: ja.length } };
+  return en.map((text, i) => ({ text, translation: ja[i] }));
+}
+
 on('script-form', 'submit', e => {
   e.preventDefault();
-  const raw = getValue('input-text').trim();
-  if (!raw) return;
+  const english = getValue('input-text').trim();
+  if (!english) return;
 
+  const japanese = getValue('input-ja').trim();
   const note = getValue('input-note').trim();
   const tags = getValue('input-tags').split(',').map(t => t.trim()).filter(Boolean);
-  const parts = isChecked('input-split') ? splitSentences(raw) : [raw];
 
-  parts.forEach(text => {
+  let parts;
+  if (isChecked('input-split')) {
+    parts = pairScripts(english, japanese);
+    if (parts.mismatch) {
+      toast(`英文${parts.mismatch.en}件に対し和訳${parts.mismatch.ja}件で数が合いません。区切りを揃えてください`, 'error');
+      return;
+    }
+  } else {
+    parts = [{ text: english, translation: japanese }];
+  }
+
+  parts.forEach(part => {
     scripts.push({
       id: uid(),
-      text,
+      text: part.text,
+      translation: part.translation || '',
       note: parts.length === 1 ? note : '',
       tags,
       createdAt: new Date().toISOString(),
@@ -697,6 +732,7 @@ on('script-form', 'submit', e => {
 
   saveScripts();
   setValue('input-text', '');
+  setValue('input-ja', '');
   setValue('input-note', '');
   document.activeElement?.blur();
   renderScriptList();
