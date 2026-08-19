@@ -169,6 +169,8 @@ main {
   font-weight: 500;
   margin: 0 0 1.1rem;
   text-wrap: pretty;
+  /* Turns in a conversation are line breaks in the script itself. */
+  white-space: pre-wrap;
 }
 
 .practice-text.has-words { cursor: pointer; }
@@ -208,6 +210,7 @@ main {
   font-size: 1.06rem;
   line-height: 1.75;
   color: var(--text-2);
+  white-space: pre-wrap;
 }
 
 .practice-note {
@@ -580,6 +583,11 @@ form h2 { margin-top: 0; }
   margin: 0 0 0.35rem;
   font-size: 1.02rem;
   line-height: 1.5;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .script-card .note {

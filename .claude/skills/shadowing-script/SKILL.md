@@ -1,6 +1,6 @@
 ---
 name: shadowing-script
-description: Formats English and Japanese text into the paste-ready script format for the shadowing practice app (英文の次の行に和訳、ペア間は空行). Use this whenever the user sends English text, Japanese text, or a bilingual pair and wants it prepared for the app — including when they just paste a passage with no instructions, or say things like シャドーイング用に, スクリプト形式で, 整形して, これを追加したい, 変換して, or ask for a transcript/article/dialogue to be turned into practice material. Also use when they hand over an already-translated pair and only need the line structure fixed.
+description: Formats English and Japanese text into the paste-ready script format for the shadowing practice app (英文の次の行に和訳、空行が項目の区切り). Use this whenever the user sends English text, Japanese text, or a bilingual pair and wants it prepared for the app — including when they just paste a passage with no instructions, or say things like シャドーイング用に, スクリプト形式で, 整形して, これを追加したい, 変換して, or ask for a transcript/article/dialogue to be turned into practice material. Also use when they hand over an already-translated pair and only need the line structure fixed.
 ---
 
 # Shadowing script formatter
@@ -9,48 +9,61 @@ The shadowing app takes one pasted block holding both languages. This skill turn
 
 ## The format
 
-Each English sentence sits on its own line with its Japanese translation on the line directly below it. A blank line separates pairs.
+Each English line has its Japanese translation on the line directly below it. **A blank line ends one practice item and starts the next** — everything between two blank lines is spoken as a single recording.
 
 ```
-I've been meaning to reach out to you.
-ずっと連絡しようと思っていました。
+Hey, do you have a minute?
+ちょっといいですか?
+Sure, what's up?
+もちろん、どうしました?
 
-Let's circle back to this next week.
-この件は来週また改めて話しましょう。
+Thanks, that really helps.
+ありがとう、助かります。
 ```
 
-The app decides a line's role by looking at its characters: a line containing kana or kanji is a translation and attaches to the English above it. That is the whole mechanism, which leads to the constraints that matter:
+That is two items: a two-turn exchange practised in one run, then a standalone line.
 
-- **The block starts with English.** A Japanese line with no English above it has nothing to attach to, and the app rejects the paste.
-- **Never break a sentence across lines.** A line ending is a record separator, so a wrapped sentence becomes two entries.
+The app decides a line's role by looking at its characters: a line containing kana or kanji is a translation, and within an item the English lines and Japanese lines pair up by position. That is the whole mechanism, which leads to the constraints that matter:
+
+- **Every item starts with English.** A Japanese line with no English above it has nothing to pair with, and the app rejects the paste.
+- **Never break a sentence across lines.** A line break inside an item becomes a pause in the reading.
 - **Keep Japanese out of the English lines.** Romanised names and Latin-alphabet loanwords are fine; kana or kanji in an English line makes the app read that line as a translation.
+- **Blank lines are structural.** They are the only thing separating items, so never use one for visual spacing inside a passage.
 
 ## Producing the output
 
 Put the finished block in a fenced code block and nothing else inside it — no commentary, no numbering, no speaker labels, no headings. The user copies the block with one tap and pastes it straight into the app, so anything extra becomes a script they have to delete by hand.
 
-Outside the code block, keep remarks short. Say how many pairs there are, and flag anything you were unsure about (an ambiguous sentence, a term you translated a particular way). Skip the preamble otherwise.
+Outside the code block, keep remarks short. Say how many items there are, and flag anything you were unsure about (an ambiguous sentence, a term you translated a particular way). Skip the preamble otherwise.
 
-## Splitting into sentences
+## Deciding how much goes in one item
 
-A line is one practice item, whatever it holds — the app does no splitting of its own. So how much English sits on a line is a decision you are making for the user, not a formatting detail.
+The app does no splitting of its own, so where you put the blank lines decides what the user practises in one run. That is a judgement about the material, not a formatting detail.
 
-One sentence per pair is the default, because the app practises one entry at a time and a lone sentence is the right size to shadow.
-
-Group several sentences onto one line when the user asks for sections, longer runs, or "まとめて" — and also when the passage only makes sense in pieces larger than a sentence, such as a two-line exchange or a sentence whose subject is a pronoun pointing at the one before. Two to four sentences is a workable section; beyond that a single take gets hard to hold. Put the matching Japanese sentences on the one line below, in the same order.
+**Conversation goes in one item.** An exchange only works as practice if the turns follow each other the way they would in speech — the rhythm of a reply landing on a question is most of what makes dialogue worth shadowing. Keep a whole exchange together, one turn per line, and use blank lines only between separate scenes. A four to eight turn exchange is a comfortable run.
 
 ```
-The board approved the merger on Tuesday. Shares rose 4% in after-hours trading.
-取締役会は火曜日にその合併を承認しました。株価は時間外取引で4%上昇しました。
+Hey, do you have a minute?
+ちょっといいですか?
+Sure, what's up?
+もちろん、どうしました?
+I wanted to ask about the schedule for next week.
+来週のスケジュールについて聞きたくて。
 ```
 
-When you group, say so in your remarks and give the pair count, since the user may want a different granularity.
+**Continuous prose goes in paragraph-sized items.** For an article or a transcript, keep a few sentences that carry one thought together — one sentence per line inside the item — so the user practises the passage as it was written rather than as disconnected fragments. Roughly three to six sentences per item; past that a single take is hard to hold.
+
+**Single sentences get their own item** when the user is collecting phrases to drill, or when the material really is a list of unrelated examples.
+
+When the material is ambiguous, prefer the longer run — the user can always practise a part of it with the A-B repeat, but the app cannot join items back together.
+
+Say which grouping you chose and give the item count, since the user may want a different granularity.
 
 Split on real sentence boundaries, not on every period. `Mr.`, `Dr.`, `U.S.`, `e.g.`, `No. 5`, `3.5%`, and decimal points all end up mid-sentence — splitting there produces fragments that make no sense to practise. Read the text rather than pattern-matching on punctuation.
 
 Some things belong together even across a period:
 
-- A quotation and its attribution: `"We'll see," she said.` is one pair.
+- A quotation and its attribution: `"We'll see," she said.` is one line.
 - A short sentence that only makes sense with its neighbour, such as a two-word reply following its setup.
 - Sentences the user has already grouped, when they clearly want them as one unit.
 
@@ -66,13 +79,15 @@ When the user supplies both languages, their translation is the one to keep. Ref
 
 ## Handling what people actually paste
 
-**Dialogue with speaker names.** Drop the labels — they are not part of what gets spoken in practice, and they would be parsed as English lines with no translation. If knowing the speaker matters for a line, carry it in the Japanese instead (`(店員)いらっしゃいませ。`).
+**Dialogue with speaker names.** Drop the labels — they would be read aloud in the recording, and a bare `Clerk:` line parses as English with no translation. The turns are already separated by their line breaks. If knowing who speaks matters, carry it in the Japanese instead (`(店員)いらっしゃいませ。`).
 
 **Headings, timestamps, bylines, footnotes.** Leave them out. They are not sentences to shadow.
 
 **Text with existing line breaks.** Transcripts often wrap mid-sentence. Rejoin the sentence before pairing it; the source's line breaks carry no meaning here.
 
-**Long passages.** Format the whole thing. The app registers each pair as its own entry, so a 30-sentence article becomes 30 practice items, which is the point. Only summarise or excerpt if the user asks.
+**Long passages.** Format the whole thing, grouped into paragraph-sized items. Only summarise or excerpt if the user asks.
+
+**One recording per item.** Each item is sent to the speech API as a single request, so a long item costs one generation rather than several — but it also means an item cannot be regenerated in parts.
 
 ## Example
 
@@ -85,12 +100,10 @@ Your reply:
 ```
 The board approved the merger on Tuesday.
 取締役会は火曜日にその合併を承認しました。
-
 Shares rose 4% in after-hours trading.
 株価は時間外取引で4%上昇しました。
-
 "This is a good outcome for everyone," the CEO said.
 「これは全員にとって良い結果です」とCEOは述べました。
 ```
 
-3ペアです。3文目は引用と発言者を1つのペアにまとめています。
+3文で1項目です。ひと続きの話なので通しで練習できるようにまとめました。1文ずつ分けたい場合は言ってください。

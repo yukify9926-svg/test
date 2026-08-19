@@ -482,7 +482,14 @@ function updateHighlight(position) {
   const index = findWord(position);
   if (index === activeWord) return;
   if (wordSpans[activeWord]) wordSpans[activeWord].classList.remove('active');
-  if (wordSpans[index]) wordSpans[index].classList.add('active');
+
+  const span = wordSpans[index];
+  if (span) {
+    span.classList.add('active');
+    // A passage long enough to scroll would otherwise leave the reader
+    // following audio they can no longer see.
+    if (player.playing) span.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
   activeWord = index;
 }
 
@@ -712,34 +719,26 @@ function isJapanese(line) {
   return JAPANESE_CHARS.test(line);
 }
 
-// Reads one pasted block holding both languages. Two arrangements are accepted
-// because they cannot be confused: English and Japanese alternating line by
-// line, or every English line followed by the same number of Japanese lines.
-function parseCombined(text) {
-  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-  if (!lines.length) return [];
+// A blank line ends a block. Within one, English lines and Japanese lines are
+// collected in order and matched up by position, so the two arrangements people
+// write — alternating line by line, or all the English then all the Japanese —
+// both land the same way and neither has to be detected.
+function parseBlock(block) {
+  const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
+  return {
+    english: lines.filter(line => !isJapanese(line)),
+    japanese: lines.filter(isJapanese),
+    startsJapanese: lines.length > 0 && isJapanese(lines[0])
+  };
+}
 
-  const japanese = lines.map(isJapanese);
-  if (japanese[0]) return { orphan: lines[0] };
-
-  const firstJa = japanese.indexOf(true);
-  const blockPaired = firstJa > 1 &&
-    japanese.slice(firstJa).every(Boolean) &&
-    firstJa === lines.length - firstJa;
-  if (blockPaired) {
-    return lines.slice(0, firstJa).map((text, i) => ({ text, translation: lines[firstJa + i] }));
-  }
-
-  const pairs = [];
-  lines.forEach(line => {
-    if (!isJapanese(line)) {
-      pairs.push({ text: line, translation: '' });
-      return;
-    }
-    const last = pairs[pairs.length - 1];
-    last.translation = last.translation ? `${last.translation} ${line}` : line;
-  });
-  return pairs;
+function parseBlocks(text) {
+  return text
+    .split(/\n[ \t]*\n/)
+    .map(block => block.trim())
+    .filter(Boolean)
+    .map(parseBlock)
+    .filter(block => block.english.length || block.japanese.length);
 }
 
 // Pairs English with a supplied translation. Returns null when the two sides
@@ -760,29 +759,45 @@ on('script-form', 'submit', e => {
   const note = getValue('input-note').trim();
   const tags = getValue('input-tags').split(',').map(t => t.trim()).filter(Boolean);
 
-  let parts = parseCombined(raw);
-  if (parts.orphan) {
-    toast('英文から始めてください。和訳は英文の次の行に書きます', 'error');
+  const blocks = parseBlocks(raw);
+  if (!blocks.length) return;
+  if (blocks.some(block => block.startsJapanese)) {
+    toast('各ブロックは英文から始めてください。和訳は英文の次の行に書きます', 'error');
     return;
   }
-  if (!parts.length) return;
 
-  // A line is one practice item, however many sentences it holds — that is
-  // what makes a multi-sentence section possible, and it keeps a given line
-  // behaving the same whether it was pasted alone or among others. Splitting
-  // further is an explicit request, and then it applies to every line.
-  if (isChecked('input-split')) {
-    const expanded = [];
-    for (const part of parts) {
-      const paired = pairScripts(part.text, part.translation);
+  const unit = getValue('input-unit') || 'block';
+  const parts = [];
+
+  for (const block of blocks) {
+    // A block kept whole is what makes a conversation practisable in one run:
+    // its turns stay in one item, so one recording carries the exchange.
+    if (unit === 'block') {
+      parts.push({ text: block.english.join('\n'), translation: block.japanese.join('\n') });
+      continue;
+    }
+
+    if (block.japanese.length && block.japanese.length !== block.english.length) {
+      toast(`英文${block.english.length}行に対し和訳${block.japanese.length}行で数が合いません`, 'error');
+      return;
+    }
+
+    for (let i = 0; i < block.english.length; i++) {
+      const line = { text: block.english[i], translation: block.japanese[i] || '' };
+      if (unit === 'line') {
+        parts.push(line);
+        continue;
+      }
+      const paired = pairScripts(line.text, line.translation);
       if (paired.mismatch) {
-        toast(`英文${paired.mismatch.en}件に対し和訳${paired.mismatch.ja}件で数が合いません。区切りを揃えてください`, 'error');
+        toast(`英文${paired.mismatch.en}文に対し和訳${paired.mismatch.ja}文で数が合いません`, 'error');
         return;
       }
-      expanded.push(...paired);
+      parts.push(...paired);
     }
-    parts = expanded;
   }
+
+  if (!parts.length) return;
 
   parts.forEach(part => {
     scripts.push({
