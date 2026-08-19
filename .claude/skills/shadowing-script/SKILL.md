@@ -31,15 +31,20 @@ Put the finished block in a fenced code block and nothing else inside it — no 
 
 Outside the code block, keep remarks short. Say how many pairs there are, and flag anything you were unsure about (an ambiguous sentence, a term you translated a particular way). Skip the preamble otherwise.
 
-### One pair on its own
-
-When the block contains a single pair, the app stops treating line breaks as the delimiter and falls back to splitting both sides into sentences, then matching them up. A one-sentence English line against a two-sentence Japanese line therefore fails with a count mismatch and nothing is registered.
-
-So in a single-pair block, give the Japanese the same number of sentences as the English — usually one. Japanese naturally wants to break a long English sentence in two; resist it there, or add a second pair so the line breaks take over again. Blocks with two or more pairs have no such constraint, and a translation may hold several sentences.
-
 ## Splitting into sentences
 
+A line is one practice item, whatever it holds — the app does no splitting of its own. So how much English sits on a line is a decision you are making for the user, not a formatting detail.
+
 One sentence per pair is the default, because the app practises one entry at a time and a lone sentence is the right size to shadow.
+
+Group several sentences onto one line when the user asks for sections, longer runs, or "まとめて" — and also when the passage only makes sense in pieces larger than a sentence, such as a two-line exchange or a sentence whose subject is a pronoun pointing at the one before. Two to four sentences is a workable section; beyond that a single take gets hard to hold. Put the matching Japanese sentences on the one line below, in the same order.
+
+```
+The board approved the merger on Tuesday. Shares rose 4% in after-hours trading.
+取締役会は火曜日にその合併を承認しました。株価は時間外取引で4%上昇しました。
+```
+
+When you group, say so in your remarks and give the pair count, since the user may want a different granularity.
 
 Split on real sentence boundaries, not on every period. `Mr.`, `Dr.`, `U.S.`, `e.g.`, `No. 5`, `3.5%`, and decimal points all end up mid-sentence — splitting there produces fragments that make no sense to practise. Read the text rather than pattern-matching on punctuation.
 

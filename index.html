@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <header class="app-header">
@@ -88,9 +88,9 @@
       <label>スクリプト
         <textarea id="input-text" rows="8" placeholder="I've been meaning to reach out to you.&#10;ずっと連絡しようと思っていました。&#10;&#10;Let's circle back next week.&#10;来週また改めて話しましょう。" required></textarea>
       </label>
-      <p class="hint form-hint">英文の次の行に和訳を書くと対応させて登録します。ペアの間の空行は任意。和訳なし(英文だけ)でも登録できます。</p>
+      <p class="hint form-hint">英文の次の行に和訳を書くと対応させて登録します。ペアの間の空行は任意。和訳なし(英文だけ)でも登録できます。<br><strong>1行がそのまま練習の1単位</strong>になるので、複数の文を1行に書けばまとめて練習できます。</p>
       <label class="switch inline">
-        <input type="checkbox" id="input-split" checked> 1行に複数の文があるときは文ごとに分ける
+        <input type="checkbox" id="input-split"> 1行の中も文ごとに分けて登録する
       </label>
       <label>意味・メモ(任意)
         <input type="text" id="input-note" placeholder="ずっと連絡しようと思っていた">
@@ -173,6 +173,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

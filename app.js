@@ -767,15 +767,21 @@ on('script-form', 'submit', e => {
   }
   if (!parts.length) return;
 
-  // A single line may still hold several sentences; the line breaks are the
-  // delimiter whenever the paste has more than one.
-  if (parts.length === 1 && isChecked('input-split')) {
-    const paired = pairScripts(parts[0].text, parts[0].translation);
-    if (paired.mismatch) {
-      toast(`英文${paired.mismatch.en}件に対し和訳${paired.mismatch.ja}件で数が合いません。区切りを揃えてください`, 'error');
-      return;
+  // A line is one practice item, however many sentences it holds — that is
+  // what makes a multi-sentence section possible, and it keeps a given line
+  // behaving the same whether it was pasted alone or among others. Splitting
+  // further is an explicit request, and then it applies to every line.
+  if (isChecked('input-split')) {
+    const expanded = [];
+    for (const part of parts) {
+      const paired = pairScripts(part.text, part.translation);
+      if (paired.mismatch) {
+        toast(`英文${paired.mismatch.en}件に対し和訳${paired.mismatch.ja}件で数が合いません。区切りを揃えてください`, 'error');
+        return;
+      }
+      expanded.push(...paired);
     }
-    parts = paired;
+    parts = expanded;
   }
 
   parts.forEach(part => {
