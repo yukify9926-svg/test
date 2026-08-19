@@ -32,7 +32,8 @@
    - API Key: https://elevenlabs.io/app/settings/api-keys で発行。権限は「テキスト読み上げ」のみで動作します
    - Voice ID: ElevenLabsの **My Voices** にある音声のIDを使用してください。無料プランではVoice Libraryの音声をAPIから利用できません
    - APIキーはこの端末のブラウザ(localStorage)にのみ保存され、リポジトリには含まれません
-3. 日本語訳と語彙解説も使う場合は、同じ画面でAnthropic API Keyを入力(https://console.anthropic.com で発行)。空のままでも音声機能は使えます
+3. 日本語訳と語彙解説も使う場合は、同じ画面でAnthropic API Keyを入力(https://platform.claude.com/settings/keys で発行)。空のままでも音声機能は使えます
+   - Claude Opus 5 を使用。1回あたりの目安は翻訳が約0.7円、語彙が約1.2円(入力 $5/100万トークン、出力 $25/100万トークン)。結果は端末に保存されるため、同じ文・同じ単語で再課金されません
 4. 「スクリプト」タブで練習したい英文を追加
 5. 「練習する」→「音声を生成」で再生開始
 
