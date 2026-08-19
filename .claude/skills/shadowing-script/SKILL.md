@@ -31,6 +31,12 @@ Put the finished block in a fenced code block and nothing else inside it — no 
 
 Outside the code block, keep remarks short. Say how many pairs there are, and flag anything you were unsure about (an ambiguous sentence, a term you translated a particular way). Skip the preamble otherwise.
 
+### One pair on its own
+
+When the block contains a single pair, the app stops treating line breaks as the delimiter and falls back to splitting both sides into sentences, then matching them up. A one-sentence English line against a two-sentence Japanese line therefore fails with a count mismatch and nothing is registered.
+
+So in a single-pair block, give the Japanese the same number of sentences as the English — usually one. Japanese naturally wants to break a long English sentence in two; resist it there, or add a second pair so the line breaks take over again. Blocks with two or more pairs have no such constraint, and a translation may hold several sentences.
+
 ## Splitting into sentences
 
 One sentence per pair is the default, because the app practises one entry at a time and a lone sentence is the right size to shadow.
