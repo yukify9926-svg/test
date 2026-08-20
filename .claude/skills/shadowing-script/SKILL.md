@@ -12,16 +12,20 @@ The shadowing app takes one pasted block holding both languages. This skill turn
 Each English line has its Japanese translation on the line directly below it. **A blank line ends one practice item and starts the next** — everything between two blank lines is spoken as a single recording.
 
 ```
-Hey, do you have a minute?
-ちょっといいですか?
-Sure, what's up?
-もちろん、どうしました?
+A: Hey, do you have a minute?
+A: ちょっといいですか?
+B: Sure, what's up?
+B: もちろん、どうしました?
 
 Thanks, that really helps.
 ありがとう、助かります。
 ```
 
 That is two items: a two-turn exchange practised in one run, then a standalone line.
+
+**Label the speakers whenever there are two of them.** A line starting `A:` (or any short name, optionally in markdown emphasis) names its speaker, and the app reads the first speaker in one voice and the second in another, so an exchange sounds like two people rather than one person reciting both parts. Labels never reach the recording — they are stripped before the text is spoken.
+
+Labels only take effect when **every** English line in the item carries one, because a lone colon is far more likely to be punctuation than a speaker. So label all of an exchange or none of it, and put the same label on the Japanese line so the two stay readable side by side. Leave prose unlabelled: a single narrator does not need a name, and labelling every line of an article would just clutter it.
 
 The app decides a line's role by looking at its characters: a line containing kana or kanji is a translation, and within an item the English lines and Japanese lines pair up by position. That is the whole mechanism, which leads to the constraints that matter:
 
@@ -38,7 +42,7 @@ So the Nth Japanese line has to translate the Nth English line and nothing else.
 
 ## Producing the output
 
-Put the finished block in a fenced code block and nothing else inside it — no commentary, no numbering, no speaker labels, no headings. The user copies the block with one tap and pastes it straight into the app, so anything extra becomes a script they have to delete by hand.
+Put the finished block in a fenced code block and nothing else inside it — no commentary, no numbering, no headings. (Speaker labels are part of the format, not commentary.) The user copies the block with one tap and pastes it straight into the app, so anything extra becomes a script they have to delete by hand.
 
 Outside the code block, keep remarks short. Say how many items there are, and flag anything you were unsure about (an ambiguous sentence, a term you translated a particular way). Skip the preamble otherwise.
 
@@ -49,12 +53,12 @@ The app does no splitting of its own, so where you put the blank lines decides w
 **Conversation goes in one item.** An exchange only works as practice if the turns follow each other the way they would in speech — the rhythm of a reply landing on a question is most of what makes dialogue worth shadowing. Keep a whole exchange together, one turn per line, and use blank lines only between separate scenes. A four to eight turn exchange is a comfortable run.
 
 ```
-Hey, do you have a minute?
-ちょっといいですか?
-Sure, what's up?
-もちろん、どうしました?
-I wanted to ask about the schedule for next week.
-来週のスケジュールについて聞きたくて。
+A: Hey, do you have a minute?
+A: ちょっといいですか?
+B: Sure, what's up?
+B: もちろん、どうしました?
+A: I wanted to ask about the schedule for next week.
+A: 来週のスケジュールについて聞きたくて。
 ```
 
 **Continuous prose goes in paragraph-sized items.** For an article or a transcript, keep a few sentences that carry one thought together — one sentence per line inside the item — so the user practises the passage as it was written rather than as disconnected fragments. Roughly three to six sentences per item; past that a single take is hard to hold.
@@ -85,7 +89,9 @@ When the user supplies both languages, their translation is the one to keep. Ref
 
 ## Handling what people actually paste
 
-**Dialogue with speaker names.** Drop the labels — they would be read aloud in the recording, and a bare `Clerk:` line parses as English with no translation. The turns are already separated by their line breaks. If knowing who speaks matters, carry it in the Japanese instead (`(店員)いらっしゃいませ。`).
+**Dialogue with speaker names.** Keep them, in `Name:` form at the start of both the English and the Japanese line — that is what drives the two voices. Normalise whatever the source uses (`CLERK —`, `[Clerk]`, `Clerk：`) into a plain `Clerk:`, and keep the name short: it sits in front of the line on screen.
+
+**Three or more speakers.** There are only two voices, so the third speaker onwards shares the first voice. Label them all anyway — the names still show on screen and mark the turns — and mention in your remarks that only two voices are available.
 
 **Headings, timestamps, bylines, footnotes.** Leave them out. They are not sentences to shadow.
 
@@ -93,7 +99,7 @@ When the user supplies both languages, their translation is the one to keep. Ref
 
 **Long passages.** Format the whole thing, grouped into paragraph-sized items. Only summarise or excerpt if the user asks.
 
-**One recording per item.** Each item is sent to the speech API as a single request, so a long item costs one generation rather than several — but it also means an item cannot be regenerated in parts.
+**One recording per item.** An item becomes one continuous recording. An unlabelled item is a single request; a labelled one is split at each change of speaker and the pieces are joined, so an exchange that alternates every line costs one request per turn. Same characters, same price, but more requests — another reason not to label prose.
 
 **A missing translation is recoverable.** The reader can generate the Japanese for one line from inside the app, so English-only output is a usable result rather than a broken one. Supply the translation anyway unless the user asked for English alone.
 

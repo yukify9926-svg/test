@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="シャドーイング">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#201f24" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <header class="app-header">
@@ -84,9 +84,9 @@
     <form id="script-form">
       <h2>例文・表現を追加</h2>
       <label>スクリプト
-        <textarea id="input-text" rows="8" placeholder="Hey, do you have a minute?&#10;ちょっといいですか?&#10;Sure, what's up?&#10;もちろん、どうしました?&#10;&#10;Thanks, that helps.&#10;ありがとう、助かります。" required></textarea>
+        <textarea id="input-text" rows="8" placeholder="A: Hey, do you have a minute?&#10;A: ちょっといいですか?&#10;B: Sure, what's up?&#10;B: もちろん、どうしました?" required></textarea>
       </label>
-      <p class="hint form-hint">英文の次の行に和訳を書きます。<strong>空行で区切ったブロックが練習の1単位</strong>になるので、会話や長文は続けて書けば通しで練習できます。和訳なし(英文だけ)でも登録できます。</p>
+      <p class="hint form-hint">英文の次の行に和訳を書きます。<strong>空行で区切ったブロックが練習の1単位</strong>になるので、会話や長文は続けて書けば通しで練習できます。<br><code>A:</code> のように行頭に話者名を付けると、2つの声で読み分けます(全行に付けたときだけ有効)。</p>
       <label>登録の単位
         <select id="input-unit">
           <option value="block">ブロックごと(会話・長文を通しで)</option>
@@ -116,9 +116,13 @@
       <label>API Key
         <input type="password" id="input-api-key" placeholder="sk_..." autocomplete="off">
       </label>
-      <label>Voice ID
+      <label>Voice ID(話者1)
         <input type="text" id="input-voice-id" placeholder="My Voices からコピーしたID" autocomplete="off">
       </label>
+      <label>Voice ID(話者2・任意)
+        <input type="text" id="input-voice-id-2" placeholder="対話を2つの声で読み上げる場合" autocomplete="off">
+      </label>
+      <p class="hint">話者ラベル付きのスクリプトは、1人目の話者を話者1の声、2人目を話者2の声で読み上げます。未設定のときはすべて話者1の声になります。</p>
 
       <h2>文の長押し</h2>
       <label>長押ししたときの動作
@@ -176,6 +180,6 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

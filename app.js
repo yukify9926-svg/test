@@ -68,7 +68,7 @@ function saveScripts() {
 }
 
 function loadSettings() {
-  const empty = { apiKey: '', voiceId: '', claudeKey: '', lookup: 'sentence' };
+  const empty = { apiKey: '', voiceId: '', voiceId2: '', claudeKey: '', lookup: 'sentence' };
   try {
     return Object.assign(empty, JSON.parse(localStorage.getItem(SETTINGS_KEY)));
   } catch {
@@ -110,8 +110,10 @@ async function cacheGet(id) {
   try {
     const value = await dbRequest('readonly', store => store.get(id));
     if (!value) return null;
-    // Entries written before word timings existed are bare ArrayBuffers.
-    if (value instanceof ArrayBuffer) return { audio: value, alignment: null };
+    // Older entries hold a single recording: bare ArrayBuffer before word
+    // timings existed, then { audio, alignment } before two voices.
+    if (value instanceof ArrayBuffer) return { segments: [value], alignment: null };
+    if (value.audio) return { segments: [value.audio], alignment: value.alignment || null };
     return value;
   } catch {
     return null;
@@ -196,6 +198,83 @@ function fetchTranslation(text) {
   );
 }
 
+// ---------- two voices in one recording ----------
+// The speech API gives one voice per request, so a dialogue is generated in
+// runs — consecutive lines by the same speaker — and the pieces are joined
+// into a single buffer. Playback, seeking and highlighting then treat the
+// exchange as the one continuous recording it should have been.
+
+function joinBuffers(ctx, buffers) {
+  const channels = Math.max(...buffers.map(b => b.numberOfChannels));
+  const length = buffers.reduce((total, b) => total + b.length, 0);
+  const joined = ctx.createBuffer(channels, length, buffers[0].sampleRate);
+
+  let offset = 0;
+  buffers.forEach(buffer => {
+    for (let channel = 0; channel < channels; channel++) {
+      const source = buffer.getChannelData(Math.min(channel, buffer.numberOfChannels - 1));
+      joined.getChannelData(channel).set(source, offset);
+    }
+    offset += buffer.length;
+  });
+  return joined;
+}
+
+// Each run's timings start again from zero, so they are shifted by the audio
+// that plays before them. A newline is inserted between runs because line
+// grouping reads them out of the character stream.
+function joinAlignments(parts) {
+  if (parts.some(part => !part.alignment)) return null;
+
+  const characters = [];
+  const starts = [];
+  const ends = [];
+  let elapsed = 0;
+
+  parts.forEach((part, index) => {
+    const { characters: chars, character_start_times_seconds: s, character_end_times_seconds: e } = part.alignment;
+    if (index > 0) {
+      characters.push('\n');
+      starts.push(elapsed);
+      ends.push(elapsed);
+    }
+    chars.forEach((char, i) => {
+      characters.push(char);
+      starts.push(s[i] + elapsed);
+      ends.push(e[i] + elapsed);
+    });
+    elapsed += part.duration;
+  });
+
+  return {
+    characters,
+    character_start_times_seconds: starts,
+    character_end_times_seconds: ends
+  };
+}
+
+// Consecutive lines by one speaker become a single request.
+function speakerRuns(script) {
+  const textLines = script.text.split('\n');
+  const speakers = script.speakers;
+  if (!speakers || speakers.length !== textLines.length) {
+    return [{ text: script.text, voice: settings.voiceId }];
+  }
+
+  const cast = [...new Set(speakers)];
+  const voices = [settings.voiceId, settings.voiceId2 || settings.voiceId];
+
+  const runs = [];
+  textLines.forEach((line, i) => {
+    // A third speaker falls back to the first voice; there are only two.
+    const voice = voices[Math.min(cast.indexOf(speakers[i]), voices.length - 1)];
+    const last = runs[runs.length - 1];
+    if (last && last.voice === voice && last.speaker === speakers[i]) last.text += `\n${line}`;
+    else runs.push({ text: line, voice, speaker: speakers[i] });
+  });
+  return runs;
+}
+
 // ---------- Web Audio player ----------
 // The <audio> element cannot seek in ElevenLabs' streamed MP3 (no duration
 // metadata), so playback runs through the Web Audio API instead.
@@ -234,10 +313,14 @@ const player = {
     });
   },
 
-  async load(arrayBuffer) {
+  async load(arrayBuffers) {
+    const ctx = this.unlock();
+    const buffers = [];
+    for (const arrayBuffer of arrayBuffers) buffers.push(await this.decode(arrayBuffer));
+
     this.stop();
     this.ab = null;
-    this.buffer = await this.decode(arrayBuffer);
+    this.buffer = buffers.length === 1 ? buffers[0] : joinBuffers(ctx, buffers);
     this.offset = 0;
   },
 
@@ -440,9 +523,14 @@ function renderScriptText(script) {
   // text; otherwise show the script and leave the highlight off.
   const timings = timed && timed.length === texts.length ? timed : null;
 
+  const speakers = script.speakers && script.speakers.length === texts.length ? script.speakers : null;
+  const cast = speakers ? [...new Set(speakers)] : [];
+
   lines = texts.map((text, i) => ({
     text,
     translation: translations[i] || '',
+    speaker: speakers ? speakers[i] : null,
+    voice: speakers ? Math.min(cast.indexOf(speakers[i]), 1) : 0,
     start: timings ? timings[i].start : null,
     end: timings ? timings[i].end : null
   }));
@@ -453,9 +541,15 @@ function renderScriptText(script) {
 
   lines.forEach((line, i) => {
     const span = document.createElement('span');
-    span.className = 'line';
+    span.className = line.speaker ? `line voice-${line.voice + 1}` : 'line';
     span.dataset.line = String(i);
-    span.textContent = line.text;
+    if (line.speaker) {
+      const label = document.createElement('span');
+      label.className = 'speaker';
+      label.textContent = line.speaker;
+      span.appendChild(label);
+    }
+    span.appendChild(document.createTextNode(line.text));
     container.appendChild(span);
     lineSpans.push(span);
   });
@@ -560,7 +654,8 @@ function renderSheet() {
 
   // The English is left selectable so iOS's own 調べる and 翻訳 stay reachable
   // for a single word, even while a hold on the script opens this sheet.
-  let body = `<p class="sheet-en">${escapeHtml(line.text)}</p>`;
+  let body = line.speaker ? `<p class="sheet-speaker">${escapeHtml(line.speaker)}</p>` : '';
+  body += `<p class="sheet-en">${escapeHtml(line.text)}</p>`;
 
   if (line.translation) {
     body += `<p class="sheet-ja">${escapeHtml(line.translation)}</p>`;
@@ -666,11 +761,30 @@ function isJapanese(line) {
 // collected in order and matched up by position, so the two arrangements people
 // write — alternating line by line, or all the English then all the Japanese —
 // both land the same way and neither has to be detected.
+// `A: Hello` — the label is short, sits before the first colon, and may be
+// wrapped in markdown emphasis. Only accepted when every English line in the
+// block carries one, since a lone colon is far more likely to be punctuation
+// inside a sentence than a speaker.
+const SPEAKER_RE = /^[*_]{0,2}\s*([^:：*_\n]{1,24}?)\s*[*_]{0,2}\s*[:：]\s*(\S.*)$/;
+
+function splitSpeaker(line) {
+  const match = line.match(SPEAKER_RE);
+  return match ? { speaker: match[1].trim(), text: match[2].trim() } : { speaker: null, text: line };
+}
+
 function parseBlock(block) {
   const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
+  const english = lines.filter(line => !isJapanese(line));
+  const japanese = lines.filter(isJapanese);
+
+  const parsed = english.map(splitSpeaker);
+  const labelled = parsed.length > 0 && parsed.every(part => part.speaker);
+
   return {
-    english: lines.filter(line => !isJapanese(line)),
-    japanese: lines.filter(isJapanese),
+    // Labels are stripped from what gets stored: they would be read aloud.
+    english: labelled ? parsed.map(part => part.text) : english,
+    japanese: labelled ? japanese.map(line => splitSpeaker(line).text) : japanese,
+    speakers: labelled ? parsed.map(part => part.speaker) : null,
     startsJapanese: lines.length > 0 && isJapanese(lines[0])
   };
 }
@@ -716,7 +830,11 @@ on('script-form', 'submit', e => {
     // A block kept whole is what makes a conversation practisable in one run:
     // its turns stay in one item, so one recording carries the exchange.
     if (unit === 'block') {
-      parts.push({ text: block.english.join('\n'), translation: block.japanese.join('\n') });
+      parts.push({
+        text: block.english.join('\n'),
+        translation: block.japanese.join('\n'),
+        speakers: block.speakers
+      });
       continue;
     }
 
@@ -726,7 +844,8 @@ on('script-form', 'submit', e => {
     }
 
     for (let i = 0; i < block.english.length; i++) {
-      const line = { text: block.english[i], translation: block.japanese[i] || '' };
+      const speaker = block.speakers ? [block.speakers[i]] : null;
+      const line = { text: block.english[i], translation: block.japanese[i] || '', speakers: speaker };
       if (unit === 'line') {
         parts.push(line);
         continue;
@@ -747,6 +866,7 @@ on('script-form', 'submit', e => {
       id: uid(),
       text: part.text,
       translation: part.translation || '',
+      speakers: part.speakers || null,
       note: parts.length === 1 ? note : '',
       tags,
       createdAt: new Date().toISOString(),
@@ -877,7 +997,7 @@ async function selectScript(id) {
   }
 
   try {
-    await player.load(cached.audio.slice(0));
+    await player.load(cached.segments.map(buffer => buffer.slice(0)));
     if (currentScriptId !== id) return;
     words = buildWords(cached.alignment);
     renderPractice();
@@ -993,6 +1113,37 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
+async function speak(text, voice) {
+  // with-timestamps also returns per-character timings, used for highlighting.
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    }
+  );
+
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const body = await res.json();
+      detail = body?.detail?.message || body?.detail?.status || '';
+    } catch { /* non-JSON error body */ }
+    throw new Error(`音声を生成できませんでした (${res.status})${detail ? ': ' + detail : ''}`);
+  }
+
+  const payload = await res.json();
+  return {
+    audio: base64ToArrayBuffer(payload.audio_base64),
+    alignment: payload.alignment || payload.normalized_alignment || null
+  };
+}
+
 on('btn-generate', 'click', async () => {
   const script = getCurrentScript();
   if (!script) return;
@@ -1005,43 +1156,32 @@ on('btn-generate', 'click', async () => {
     return;
   }
 
-  const btn = document.getElementById('btn-generate');
+  const btn = el('btn-generate');
   btn.disabled = true;
   btn.textContent = '生成中...';
-  setStatus('ElevenLabsで音声を生成しています');
+
+  const runs = speakerRuns(script);
+  if (runs.length > 1 && !settings.voiceId2) {
+    toast('2人目のVoice IDが未設定のため、すべて同じ声で生成します');
+  }
 
   try {
-    // with-timestamps also returns per-character timings, used for highlighting.
-    const res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${settings.voiceId}/with-timestamps`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
-        body: JSON.stringify({
-          text: script.text,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-        })
-      }
-    );
-
-    if (!res.ok) {
-      let detail = '';
-      try {
-        const body = await res.json();
-        detail = body?.detail?.message || body?.detail?.status || '';
-      } catch { /* non-JSON error body */ }
-      throw new Error(`音声を生成できませんでした (${res.status})${detail ? ': ' + detail : ''}`);
+    const parts = [];
+    for (let i = 0; i < runs.length; i++) {
+      setStatus(runs.length > 1 ? `音声を生成しています (${i + 1}/${runs.length})` : '音声を生成しています');
+      const part = await speak(runs[i].text, runs[i].voice);
+      if (currentScriptId !== script.id) return;
+      // The duration each run occupies is needed to shift the next one's
+      // timings, and only decoding gives it.
+      const decoded = await player.decode(part.audio.slice(0));
+      parts.push({ ...part, duration: decoded.duration });
     }
 
-    const payload = await res.json();
-    if (currentScriptId !== script.id) return;
+    const alignment = joinAlignments(parts);
+    const segments = parts.map(part => part.audio);
 
-    const audio = base64ToArrayBuffer(payload.audio_base64);
-    const alignment = payload.alignment || payload.normalized_alignment || null;
-
-    await cachePut(script.id, { audio, alignment });
-    await player.load(audio.slice(0)); // decodeAudioData detaches its input
+    await cachePut(script.id, { segments, alignment });
+    await player.load(segments.map(buffer => buffer.slice(0))); // decode detaches
     words = buildWords(alignment);
     renderPractice();
     setStatus(words ? '再生できます' : '再生できます(ハイライトなし)');
@@ -1175,6 +1315,7 @@ on('btn-mark-practiced', 'click', () => {
 
 setValue('input-api-key', settings.apiKey || '');
 setValue('input-voice-id', settings.voiceId || '');
+setValue('input-voice-id-2', settings.voiceId2 || '');
 setValue('input-claude-key', settings.claudeKey || '');
 setValue('input-lookup', settings.lookup || 'sentence');
 
@@ -1182,6 +1323,7 @@ on('settings-form', 'submit', e => {
   e.preventDefault();
   settings.apiKey = getValue('input-api-key').trim();
   settings.voiceId = getValue('input-voice-id').trim();
+  settings.voiceId2 = getValue('input-voice-id-2').trim();
   settings.claudeKey = getValue('input-claude-key').trim();
   settings.lookup = getValue('input-lookup') || 'sentence';
   saveSettings();

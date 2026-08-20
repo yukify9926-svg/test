@@ -163,15 +163,28 @@ main {
 .nav-btn:active { background: var(--accent-soft); color: var(--accent); }
 
 .practice-text {
-  font-size: 1.6rem;
-  line-height: 1.55;
-  letter-spacing: -0.011em;
+  font-size: 1.28rem;
+  line-height: 1.6;
+  letter-spacing: -0.006em;
   font-weight: 500;
   margin: 0 0 1.1rem;
   text-wrap: pretty;
 }
 
 .practice-text.has-timings .line { cursor: pointer; }
+
+/* Names the voice without being read aloud or crowding the line. */
+.speaker {
+  display: inline-block;
+  min-width: 1.6em;
+  margin-right: 0.4em;
+  font-size: 0.72em;
+  font-weight: 600;
+  color: var(--muted-2);
+  vertical-align: 0.08em;
+}
+
+.line.voice-2 .speaker { color: var(--accent); }
 
 /* One sentence, or one turn of a conversation. */
 .line {
@@ -790,4 +803,11 @@ select {
   font-size: 16px;
   background: var(--bg);
   color: var(--text);
+}
+
+.sheet-speaker {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted-2);
+  margin-bottom: 0.3rem !important;
 }
