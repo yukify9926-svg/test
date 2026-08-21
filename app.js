@@ -765,10 +765,13 @@ function isJapanese(line) {
 // wrapped in markdown emphasis. Only accepted when every English line in the
 // block carries one, since a lone colon is far more likely to be punctuation
 // inside a sentence than a speaker.
-const SPEAKER_RE = /^[*_]{0,2}\s*([^:：*_\n]{1,24}?)\s*[*_]{0,2}\s*[:：]\s*(\S.*)$/;
+// Emphasis is allowed on either side of the colon, since `**A:**` puts its
+// closing pair after it and those asterisks would otherwise be read aloud.
+const SPEAKER_RE = /^[*_]{0,2}\s*([^:：*_\n]{1,24}?)\s*[*_]{0,2}\s*[:：][*_]{0,2}\s*(\S.*)$/;
+const LIST_MARKER_RE = /^\s*(?:[-*+•]|\d+[.)])\s+/;
 
 function splitSpeaker(line) {
-  const match = line.match(SPEAKER_RE);
+  const match = line.replace(LIST_MARKER_RE, '').match(SPEAKER_RE);
   return match ? { speaker: match[1].trim(), text: match[2].trim() } : { speaker: null, text: line };
 }
 
@@ -779,12 +782,16 @@ function parseBlock(block) {
 
   const parsed = english.map(splitSpeaker);
   const labelled = parsed.length > 0 && parsed.every(part => part.speaker);
+  // Some but not all is the mistake worth reporting: the item silently reads
+  // in one voice, and nothing on screen says why.
+  const partlyLabelled = !labelled && parsed.some(part => part.speaker);
 
   return {
     // Labels are stripped from what gets stored: they would be read aloud.
     english: labelled ? parsed.map(part => part.text) : english,
     japanese: labelled ? japanese.map(line => splitSpeaker(line).text) : japanese,
     speakers: labelled ? parsed.map(part => part.speaker) : null,
+    partlyLabelled,
     startsJapanese: lines.length > 0 && isJapanese(lines[0])
   };
 }
@@ -822,6 +829,7 @@ on('script-form', 'submit', e => {
     toast('各ブロックは英文から始めてください。和訳は英文の次の行に書きます', 'error');
     return;
   }
+
 
   const unit = getValue('input-unit') || 'block';
   const parts = [];
@@ -880,7 +888,13 @@ on('script-form', 'submit', e => {
   setValue('input-note', '');
   document.activeElement?.blur();
   renderScriptList();
-  toast(parts.length === 1 ? '追加しました' : `${parts.length}件に分けて追加しました`);
+
+  // A warning has to be the last thing said, or the success message buries it.
+  if (blocks.some(block => block.partlyLabelled)) {
+    toast('話者名が一部の行にしかないため、声は出し分けません。全ての英文行に付けてください', 'error');
+  } else {
+    toast(parts.length === 1 ? '追加しました' : `${parts.length}件に分けて追加しました`);
+  }
 });
 
 function escapeHtml(str) {
@@ -1161,8 +1175,15 @@ on('btn-generate', 'click', async () => {
   btn.textContent = '生成中...';
 
   const runs = speakerRuns(script);
-  if (runs.length > 1 && !settings.voiceId2) {
+  const voices = new Set(runs.map(run => run.voice));
+  // Which voices a script ends up using is otherwise invisible until it plays,
+  // and by then it is too late to notice a label or a setting was missing.
+  if (script.speakers && !settings.voiceId2) {
     toast('2人目のVoice IDが未設定のため、すべて同じ声で生成します');
+  } else if (script.speakers && voices.size === 1) {
+    toast('話者1と話者2のVoice IDが同じです', 'error');
+  } else if (!script.speakers && settings.voiceId2) {
+    toast('このスクリプトに話者名がないため、1つの声で生成します');
   }
 
   try {
