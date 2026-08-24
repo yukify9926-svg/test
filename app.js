@@ -626,7 +626,7 @@ on('practice-text', 'contextmenu', e => {
 
 on('practice-text', 'click', e => {
   const span = e.target.closest('.line');
-  if (!span || longPressFired) return;
+  if (!span || longPressFired || swiped) return;
   // A tap that lands on a selection is the user dismissing it, not a seek.
   if (settings.lookup === 'native' && !window.getSelection().isCollapsed) return;
   const line = lines[Number(span.dataset.line)];
@@ -1119,6 +1119,35 @@ function step(delta) {
 
 on('btn-prev', 'click', () => step(-1));
 on('btn-next', 'click', () => step(1));
+
+// Horizontal swipe on the script card switches scripts, mirroring the
+// prev/next arrows. Vertical scrolling and the sentence tap/long-press
+// gestures above must keep working, so a swipe is only recognised once the
+// drag is clearly horizontal, and it suppresses the tap-to-seek click that
+// would otherwise follow the pointerup.
+const SWIPE_MIN_DX = 60;
+let swipeStart = null;
+let swiped = false;
+
+on('practice-card', 'pointerdown', e => {
+  swipeStart = { x: e.clientX, y: e.clientY };
+  swiped = false;
+});
+
+on('practice-card', 'pointermove', e => {
+  if (!swipeStart || swiped) return;
+  const dx = e.clientX - swipeStart.x;
+  const dy = e.clientY - swipeStart.y;
+  if (Math.abs(dx) > SWIPE_MIN_DX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    swiped = true;
+    cancelPress();
+    step(dx < 0 ? 1 : -1);
+  }
+});
+
+['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+  on('practice-card', type, () => { swipeStart = null; });
+});
 
 function base64ToArrayBuffer(base64) {
   const binary = atob(base64);

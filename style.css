@@ -162,6 +162,12 @@ main {
 
 .nav-btn:active { background: var(--accent-soft); color: var(--accent); }
 
+.script {
+  /* Let vertical scroll pass through natively; horizontal drags are read by
+     JS for swipe-to-switch instead of being consumed as page panning. */
+  touch-action: pan-y;
+}
+
 .practice-text {
   font-size: 1.28rem;
   line-height: 1.6;
