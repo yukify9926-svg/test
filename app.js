@@ -291,6 +291,12 @@ const player = {
   playing: false,
 
   unlock() {
+    // Leaving the app interrupts the context on iOS, and a long interruption
+    // can close it outright. A closed context can never be resumed, so the
+    // only way back is a new one — the decoded AudioBuffers are not bound to
+    // a context, so nothing has to be fetched or decoded again.
+    if (this.ctx && this.ctx.state === 'closed') this.ctx = null;
+
     if (!this.ctx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new Ctx();
@@ -300,8 +306,21 @@ const player = {
       try {
         if (navigator.audioSession) navigator.audioSession.type = 'playback';
       } catch { /* not supported — the ringer switch then applies */ }
+      // An interruption kills the playing source without ending playback as
+      // far as this object knows, leaving a pause button over silence.
+      this.ctx.onstatechange = () => {
+        if (this.ctx && this.ctx.state !== 'running' && this.playing) this.pause();
+      };
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+    // Backgrounding suspends the context, and on iOS parks it in
+    // 'interrupted' — a WebKit-only state that also needs an explicit resume.
+    if (this.ctx.state !== 'running') {
+      const resumed = this.ctx.resume();
+      if (resumed && typeof resumed.catch === 'function') {
+        resumed.catch(() => { /* iOS may want a tap first; the play button is one */ });
+      }
+    }
     return this.ctx;
   },
 
@@ -360,8 +379,11 @@ const player = {
     source.connect(ctx.destination);
     source.onended = () => {
       if (this.source !== source) return; // superseded by a newer source
+      // An interruption ends the source too, so where playback actually got
+      // to decides this — assuming the end would strand the reader there.
+      const reached = this.position();
       this.playing = false;
-      this.offset = this.duration;
+      this.offset = reached >= this.duration - 0.05 ? this.duration : reached;
       this.source = null;
       onPlaybackChanged();
     };
@@ -432,6 +454,20 @@ const player = {
     this.restart();
   }
 };
+
+// Switching to another app and back is the moment playback breaks on iOS: the
+// context is interrupted on the way out and does not start itself again on the
+// way in. Pausing while the clock still runs keeps the position honest, and
+// re-unlocking on return leaves the play button able to pick up where it was.
+document.addEventListener('visibilitychange', () => {
+  if (!player.ctx) return;
+  if (document.hidden) {
+    player.pause();
+  } else {
+    player.unlock();
+    updatePlayerUi();
+  }
+});
 
 function formatTime(seconds) {
   if (!isFinite(seconds) || seconds < 0) seconds = 0;
