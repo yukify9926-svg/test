@@ -289,32 +289,52 @@ const player = {
   loop: false,
   ab: null,        // [start, end] when an A-B region is set
   playing: false,
+  stale: false,    // context was interrupted and can no longer be trusted
 
   unlock() {
-    // Leaving the app interrupts the context on iOS, and a long interruption
-    // can close it outright. A closed context can never be resumed, so the
-    // only way back is a new one — the decoded AudioBuffers are not bound to
-    // a context, so nothing has to be fetched or decoded again.
-    if (this.ctx && this.ctx.state === 'closed') this.ctx = null;
+    // Once iOS has interrupted a context — which switching apps always does —
+    // resuming it is not enough: it commonly reports 'running' again while its
+    // output stays silent, so the only dependable cure is to throw it away.
+    // That costs nothing here: AudioBuffers are not bound to a context, so the
+    // decoded audio carries over without a fetch, a decode, or an API call.
+    if (this.ctx && (this.stale || this.ctx.state === 'closed')) {
+      const dead = this.ctx;
+      dead.onstatechange = null;
+      try { this.pause(); } catch { /* dead clock — the offset already stands */ }
+      this.ctx = null;
+      this.source = null;
+      // close() rejects rather than throwing when the context is already gone,
+      // so the rejection has to be caught as well as the call.
+      if (dead.state !== 'closed') {
+        try {
+          const closing = dead.close();
+          if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+        } catch { /* already closing */ }
+      }
+    }
+    this.stale = false;
 
     if (!this.ctx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new Ctx();
-      // iOS starts a page in an ambient session, where the ringer switch
-      // silences Web Audio (an <audio> element would have been exempt).
-      // Declaring playback asks for a session that is not tied to the ringer.
-      try {
-        if (navigator.audioSession) navigator.audioSession.type = 'playback';
-      } catch { /* not supported — the ringer switch then applies */ }
-      // An interruption kills the playing source without ending playback as
-      // far as this object knows, leaving a pause button over silence.
       this.ctx.onstatechange = () => {
-        if (this.ctx && this.ctx.state !== 'running' && this.playing) this.pause();
+        if (!this.ctx || this.ctx.state === 'running') return;
+        // Leaving 'running' means another app took the audio, so this context
+        // is spent even if it comes back by itself.
+        this.stale = true;
+        if (this.playing) this.pause();
       };
     }
 
-    // Backgrounding suspends the context, and on iOS parks it in
-    // 'interrupted' — a WebKit-only state that also needs an explicit resume.
+    // iOS starts a page in an ambient session, where the ringer switch
+    // silences Web Audio (an <audio> element would have been exempt).
+    // Declaring playback asks for a session that is not tied to the ringer.
+    // An interruption drops that declaration, so it is re-asserted on every
+    // unlock rather than only when the context is first built.
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    } catch { /* not supported — the ringer switch then applies */ }
+
     if (this.ctx.state !== 'running') {
       const resumed = this.ctx.resume();
       if (resumed && typeof resumed.catch === 'function') {
@@ -455,16 +475,18 @@ const player = {
   }
 };
 
-// Switching to another app and back is the moment playback breaks on iOS: the
-// context is interrupted on the way out and does not start itself again on the
-// way in. Pausing while the clock still runs keeps the position honest, and
-// re-unlocking on return leaves the play button able to pick up where it was.
+// Switching to another app and back is the moment playback breaks on iOS.
+// Pausing on the way out keeps the position honest while the clock still runs,
+// and marking the context stale retires it even when no statechange arrives.
+// The replacement is deliberately left to the next unlock, which comes from the
+// play button: iOS only lets a context start inside a user gesture, so building
+// it there is what makes the tap produce sound.
 document.addEventListener('visibilitychange', () => {
   if (!player.ctx) return;
   if (document.hidden) {
     player.pause();
+    player.stale = true;
   } else {
-    player.unlock();
     updatePlayerUi();
   }
 });
