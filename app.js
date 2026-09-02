@@ -1312,8 +1312,11 @@ on('btn-playpause', 'click', () => {
   else player.play();
 });
 
-on('btn-rewind', 'click', () => player.nudge(-5));
-on('btn-forward', 'click', () => player.nudge(5));
+// Short enough to land inside the sentence being shadowed rather than skipping
+// past it; the button faces carry the same number.
+const SKIP_SECONDS = 2;
+on('btn-rewind', 'click', () => player.nudge(-SKIP_SECONDS));
+on('btn-forward', 'click', () => player.nudge(SKIP_SECONDS));
 
 function seekFraction() {
   const node = el('seek');
