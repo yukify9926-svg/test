@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>大怪獣ナギ 全体像</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Shippori+Mincho+B1:wght@500;800&display=swap">
+<style>
+  /* Layout: a production design sheet. One wide plate, numbered pins on it, the key underneath. Single dark look by choice, shared with the trailer. */
+  :root {
+    color-scheme: dark;
+    --ink: #04090a;
+    --abyss: #0c1a1c;
+    --fog: #8fa3a0;
+    --bone: #e9e4d4;
+    --lure: #d9f2a0;
+    --display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --util: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ink); color: var(--bone); font-family: var(--display);
+    padding-block: 20px 36px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 1120px; margin-inline: auto; display: grid; gap: 16px; }
+  header { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline; justify-content: space-between; }
+  h1 { margin: 0; font-size: clamp(22px, 4vw, 34px); font-weight: 800; letter-spacing: .2em; }
+  h1 small { font-size: .5em; font-weight: 500; letter-spacing: .6em; margin-right: .8em; }
+  .slate { font-family: var(--util); font-size: 12px; letter-spacing: .14em; color: var(--fog); }
+
+  figure { position: relative; margin: 0; outline: 1px solid color-mix(in srgb, var(--fog) 22%, transparent); }
+  canvas { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 16 / 10; background: var(--abyss); }
+  .pin {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--bone); color: var(--ink);
+    font-family: var(--util); font-size: 12px; font-weight: 500; line-height: 1;
+  }
+  .height {
+    position: absolute; left: 6.6%; top: 49%; transform: translateY(-50%);
+    font-family: var(--util); font-size: clamp(9px, 1.3vw, 12px); letter-spacing: .12em; color: var(--fog); white-space: nowrap;
+  }
+  @media (max-width: 560px) { .pin { width: 17px; height: 17px; font-size: 10px; } }
+
+  dl { display: flex; flex-wrap: wrap; gap: 8px 36px; margin: 0; }
+  dl div { display: flex; gap: 12px; align-items: baseline; }
+  dt { font-family: var(--util); font-size: 11px; letter-spacing: .2em; color: var(--fog); }
+  dd { margin: 0; font-size: 16px; letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+
+  ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 32px; }
+  li { display: grid; grid-template-columns: 22px 1fr; gap: 4px 12px; align-items: baseline; align-content: start; min-width: 0; }
+  li .n { font-family: var(--util); font-size: 12px; color: var(--lure); }
+  li b { font-weight: 800; font-size: 16px; letter-spacing: .2em; }
+  li p { grid-column: 2; margin: 0; font-size: 13px; line-height: 1.8; letter-spacing: .06em; color: var(--fog); }
+  .note { margin: 0; font-size: 12px; letter-spacing: .08em; color: var(--fog); }
+</style>
+
+<main>
+  <header>
+    <h1><small>大怪獣</small>ナギ</h1>
+    <span class="slate">設定画 / 全体像 / 側面</span>
+  </header>
+
+  <figure>
+    <canvas id="plate" width="1600" height="1000" role="img" aria-label="夜の東京湾に立つ怪獣ナギの側面図。低い頭、頭上の発光する提灯、背の珊瑚状の棘、長い尾を持つ。"></canvas>
+    <span class="height">全高 60 m</span>
+    <span class="pin" style="left:10.6%;top:20.5%">1</span>
+    <span class="pin" style="left:13.2%;top:39%">2</span>
+    <span class="pin" style="left:13.2%;top:62%">3</span>
+    <span class="pin" style="left:59.5%;top:9%">4</span>
+    <span class="pin" style="left:71.5%;top:33%">5</span>
+    <span class="pin" style="left:50%;top:55.5%">6</span>
+    <span class="pin" style="left:90%;top:60%">7</span>
+  </figure>
+
+  <dl>
+    <div><dt>全高</dt><dd>60 m</dd></div>
+    <div><dt>全長</dt><dd>140 m</dd></div>
+    <div><dt>初確認</dt><dd>昭和三十九年 夏　東京湾</dd></div>
+  </dl>
+
+  <ol>
+    <li><span class="n">1</span><b>提灯</b><p>頭上に垂れる発光器。凪の海面下で光り、船を引き寄せる。</p></li>
+    <li><span class="n">2</span><b>五連眼</b><p>頭の側面に並ぶ五つの目。前から順に開く。</p></li>
+    <li><span class="n">3</span><b>針歯</b><p>深海魚に似た細い歯。口の奥も淡く光る。</p></li>
+    <li><span class="n">4</span><b>珊瑚棘</b><p>背に林立する枝状の棘。先端が発光する。</p></li>
+    <li><span class="n">5</span><b>海底ケーブル</b><p>棘に絡んだまま引きずっている。第七黒潮丸が敷設していたもの。</p></li>
+    <li><span class="n">6</span><b>発光斑</b><p>脇腹に二列に並ぶ小さな発光器。</p></li>
+    <li><span class="n">7</span><b>尾鰭</b><p>尾の背側に伸びる膜状の鰭。泳ぐときの推進に使う。</p></li>
+  </ol>
+
+  <p class="note">架空の映画『大怪獣ナギ』の設定画です。実在の作品・団体とは関係ありません。</p>
+</main>
+
+<script>
+const cv = document.getElementById('plate'), ctx = cv.getContext('2d');
+const W = 1600, H = 1000, SEA = 800;
+const BONE = '233,228,212', LURE = '217,242,160', FOG = '143,163,160';
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function vgrad(y0, y1, stops) { const g = ctx.createLinearGradient(0, y0, 0, y1); stops.forEach(([p, c]) => g.addColorStop(p, c)); return g; }
+function glow(x, y, r, rgb, a) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+function bz(c, t) {
+  const m = 1 - t, a = m * m * m, b = 3 * m * m * t, d = 3 * m * t * t, e = t * t * t;
+  return [a * c[0] + b * c[2] + d * c[4] + e * c[6], a * c[1] + b * c[3] + d * c[5] + e * c[7]];
+}
+
+/* anatomy, as cubic segments */
+const HUMP_A = [420, 350, 480, 290, 580, 180, 720, 172];
+const HUMP_B = [720, 172, 860, 165, 960, 250, 1030, 350];
+const TAIL_A = [1030, 350, 1100, 450, 1180, 560, 1290, 660];
+const TAIL_B = [1290, 660, 1380, 740, 1470, 790, 1560, 800];
+const BELLY = [1040, 690, 900, 720, 700, 720, 560, 690];
+const THROAT = [560, 690, 470, 670, 400, 640, 360, 590];
+function bodyPath() {
+  const p = new Path2D();
+  p.moveTo(250, 478);
+  p.bezierCurveTo(300, 430, 360, 400, 420, 350);
+  for (const c of [HUMP_A, HUMP_B, TAIL_A, TAIL_B]) p.bezierCurveTo(c[2], c[3], c[4], c[5], c[6], c[7]);
+  p.bezierCurveTo(1450, 822, 1330, 815, 1230, 770);
+  p.bezierCurveTo(1150, 735, 1090, 690, 1040, 690);
+  p.bezierCurveTo(900, 720, 700, 720, 560, 690);
+  p.bezierCurveTo(470, 670, 400, 640, 360, 590);
+  p.bezierCurveTo(320, 588, 280, 575, 258, 545);
+  p.lineTo(395, 522); p.lineTo(250, 490); p.closePath();
+  return p;
+}
+function leg(dx, kind) {
+  const p = new Path2D();
+  if (kind === 'fore') {
+    p.moveTo(500 + dx, 500);
+    p.bezierCurveTo(445 + dx, 560, 452 + dx, 690, 468 + dx, 770);
+    p.lineTo(420 + dx, 835); p.lineTo(590 + dx, 835);
+    p.bezierCurveTo(572 + dx, 770, 596 + dx, 690, 606 + dx, 600);
+    p.bezierCurveTo(596 + dx, 530, 545 + dx, 488, 500 + dx, 500);
+  } else {
+    p.moveTo(950 + dx, 540);
+    p.bezierCurveTo(880 + dx, 590, 885 + dx, 710, 925 + dx, 770);
+    p.lineTo(885 + dx, 835); p.lineTo(1110 + dx, 835);
+    p.bezierCurveTo(1090 + dx, 770, 1135 + dx, 700, 1140 + dx, 620);
+    p.bezierCurveTo(1120 + dx, 545, 1020 + dx, 510, 950 + dx, 540);
+  }
+  return p;
+}
+function branch(x, y, ang, len, depth, tips) {
+  const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+  ctx.lineWidth = Math.max(1.6, len * 0.17);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+  if (depth > 0) {
+    branch(x2, y2, ang - 0.5, len * 0.64, depth - 1, tips);
+    branch(x2, y2, ang + 0.42, len * 0.7, depth - 1, tips);
+  } else tips.push([x2, y2]);
+}
+
+function paint() {
+  const r = rng(1964);
+  /* sky */
+  ctx.fillStyle = vgrad(0, SEA, [[0, '#050b0d'], [0.7, '#152a2c'], [1, '#27413f']]); ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 70; i++) { ctx.fillStyle = `rgba(${BONE},${0.15 + r() * 0.35})`; ctx.fillRect(r() * W, r() * 420, 1.6, 1.6); }
+  glow(1330, 150, 260, BONE, 0.16);
+  ctx.fillStyle = `rgba(${BONE},.92)`; ctx.beginPath(); ctx.arc(1330, 150, 30, 0, 7); ctx.fill();
+  for (let i = 0; i < 9; i++) glow(r() * W, 520 + r() * 300, 260 + r() * 200, FOG, 0.07);
+
+  /* the city on the horizon, for scale */
+  { let x = -10; const c = rng(4);
+    while (x < W) {
+      const w = 8 + c() * 20, h = 5 + c() * c() * 30;
+      ctx.fillStyle = '#0b191a'; ctx.fillRect(x, SEA - h, w + 1, h + 2);
+      if (c() < 0.5) { ctx.fillStyle = `rgba(${BONE},.55)`; ctx.fillRect(x + w * 0.4, SEA - h * 0.6, 1.5, 1.5); }
+      x += w + c() * 3;
+    }
+    ctx.strokeStyle = '#0b191a'; ctx.lineWidth = 1.4; ctx.beginPath();
+    ctx.moveTo(176, SEA); ctx.lineTo(188, SEA - 72); ctx.lineTo(200, SEA);
+    for (let i = 1; i < 6; i++) { const k = i / 6; ctx.moveTo(176 + 12 * k, SEA - 72 * k); ctx.lineTo(200 - 12 * k, SEA - 72 * k); }
+    ctx.stroke(); }
+
+  /* far limbs */
+  ctx.fillStyle = '#060e0f';
+  ctx.fill(leg(-85, 'fore')); ctx.fill(leg(-95, 'hind'));
+
+  /* tail fin */
+  { const top = [], base = [];
+    for (let i = 0; i <= 40; i++) {
+      const k = i / 40, c = k < 0.5 ? TAIL_A : TAIL_B, t = k < 0.5 ? k * 2 : k * 2 - 1;
+      const [x, y] = bz(c, t), h = 40 * Math.sin(Math.PI * Math.pow(k, 0.8));
+      base.push([x, y]); top.push([x + h * 0.75, y - h * 0.72]);
+    }
+    ctx.beginPath(); ctx.moveTo(base[0][0], base[0][1]);
+    top.forEach(p => ctx.lineTo(p[0], p[1]));
+    base.slice().reverse().forEach(p => ctx.lineTo(p[0], p[1]));
+    ctx.closePath(); ctx.fillStyle = 'rgba(70,112,108,.2)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(160,195,188,.2)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let i = 2; i < 40; i += 2) { ctx.moveTo(base[i][0], base[i][1]); ctx.lineTo(top[i][0], top[i][1]); }
+    ctx.stroke(); }
+
+  /* coral spines */
+  const tips = [];
+  ctx.strokeStyle = '#2f5552'; ctx.lineCap = 'round';
+  for (let k = 0; k < 15; k++) {
+    const q = 0.3 + (k / 14) * 1.55, [x, y] = q < 1 ? bz(HUMP_A, q) : bz(HUMP_B, q - 1);
+    const big = 1 - Math.abs(q - 1.05) / 1.1;
+    branch(x, y + 16, -Math.PI / 2 + 0.22 + (r() - 0.5) * 0.5, 34 + big * 58 + r() * 22, 4, tips);
+  }
+
+  /* body */
+  const body = bodyPath();
+  ctx.fillStyle = vgrad(170, 830, [[0, '#1d3839'], [0.55, '#10201f'], [1, '#060d0e']]);
+  ctx.fill(body);
+  ctx.save(); ctx.clip(body);
+  glow(900, 150, 520, '150,190,182', 0.2);
+  glow(420, 760, 420, '0,0,0', 0.5);
+  for (let i = 0; i < 2600; i++) {
+    const x = 240 + r() * 1330, y = 160 + r() * 670, s = 1 + r() * 2.6;
+    ctx.fillStyle = r() < 0.5 ? 'rgba(0,0,0,.14)' : 'rgba(150,185,178,.06)';
+    ctx.fillRect(x, y, s, s);
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 55; i++) {
+    const x = 380 + r() * 900, y = 220 + r() * 480, l = 20 + r() * 50;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + l * 0.5, y + 10 + r() * 14, x + l, y + 4); ctx.stroke();
+  }
+  /* ventral scutes */
+  ctx.strokeStyle = `rgba(${BONE},.13)`; ctx.lineWidth = 2.4;
+  for (let i = 0; i <= 26; i++) {
+    const q = i / 13, [x, y] = q <= 1 ? bz(BELLY, q) : bz(THROAT, q - 1);
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 14, y - 26, x - 4, y - 54); ctx.stroke();
+  }
+  /* gills */
+  ctx.strokeStyle = `rgba(${LURE},.38)`; ctx.lineWidth = 3;
+  for (let i = 0; i < 4; i++) {
+    const x = 452 + i * 27, y = 452 + i * 7;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 18, y + 55, x + 4, y + 104); ctx.stroke();
+  }
+  /* photophores */
+  for (let x = 610; x < 1330; x += 40) {
+    const k = (x - 610) / 720, y = 590 + 120 * Math.pow(k, 1.25);
+    glow(x, y, 16, LURE, 0.3);
+    ctx.fillStyle = `rgba(${LURE},.85)`; ctx.beginPath(); ctx.arc(x, y, 4.2 - k * 1.6, 0, 7); ctx.fill();
+    if (x < 1060) { ctx.fillStyle = `rgba(${LURE},.5)`; ctx.beginPath(); ctx.arc(x + 20, y + 36, 2.6, 0, 7); ctx.fill(); }
+  }
+  ctx.restore();
+
+  /* moonlight on the back */
+  ctx.save(); ctx.shadowColor = 'rgba(190,225,215,.8)'; ctx.shadowBlur = 14;
+  ctx.strokeStyle = 'rgba(190,225,215,.5)'; ctx.lineWidth = 2.5; ctx.beginPath();
+  ctx.moveTo(250, 478); ctx.bezierCurveTo(300, 430, 360, 400, 420, 350);
+  for (const c of [HUMP_A, HUMP_B, TAIL_A, TAIL_B]) ctx.bezierCurveTo(c[2], c[3], c[4], c[5], c[6], c[7]);
+  ctx.stroke(); ctx.restore();
+
+  /* coral tips glow */
+  tips.forEach(([x, y], i) => { if (i % 5 === 0) { glow(x, y, 8, LURE, 0.3); ctx.fillStyle = `rgba(${LURE},.75)`; ctx.fillRect(x - 1.2, y - 1.2, 2.4, 2.4); } });
+
+  /* near limbs */
+  for (const kind of ['hind', 'fore']) {
+    const p = leg(0, kind);
+    ctx.fillStyle = vgrad(480, 840, [[0, '#17302f'], [1, '#070f10']]); ctx.fill(p);
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 3; ctx.stroke(p);
+    ctx.save(); ctx.clip(p); glow(kind === 'fore' ? 590 : 1120, 600, 150, '150,190,182', 0.14); ctx.restore();
+  }
+
+  /* mouth */
+  ctx.fillStyle = '#020506'; ctx.beginPath(); ctx.moveTo(250, 490); ctx.lineTo(395, 522); ctx.lineTo(258, 545); ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.clip(); glow(385, 522, 110, LURE, 0.5); ctx.restore();
+  ctx.fillStyle = `rgba(${BONE},.9)`;
+  for (let i = 0; i < 9; i++) {
+    const k = i / 9, ux = 254 + k * 132, uy = 491 + k * 29, l = 17 - k * 10;
+    ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + 7, uy + 1.6); ctx.lineTo(ux + 4, uy + l); ctx.closePath(); ctx.fill();
+    const lx = 262 + k * 125, ly = 544 - k * 20;
+    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 7, ly - 1.2); ctx.lineTo(lx + 3, ly - l * 0.9); ctx.closePath(); ctx.fill();
+  }
+
+  /* eyes */
+  for (let i = 0; i < 5; i++) {
+    const x = 300 + i * 25, y = 464 - i * 13.5, rad = 9 - i * 1;
+    glow(x, y, rad * 4.5, LURE, 0.45);
+    ctx.fillStyle = `rgb(${LURE})`; ctx.beginPath(); ctx.ellipse(x, y, rad, rad * 0.72, -0.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#020506'; ctx.beginPath(); ctx.ellipse(x, y, rad * 0.16, rad * 0.66, -0.5, 0, 7); ctx.fill();
+  }
+
+  /* lure */
+  ctx.strokeStyle = '#1d3839'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(445, 334); ctx.bezierCurveTo(440, 150, 300, 105, 250, 228); ctx.stroke();
+  ctx.strokeStyle = 'rgba(190,225,215,.6)'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(441, 330); ctx.bezierCurveTo(436, 148, 300, 100, 247, 226); ctx.stroke();
+  glow(250, 240, 150, LURE, 0.5);
+  ctx.fillStyle = '#f5ffdc'; ctx.beginPath(); ctx.ellipse(250, 242, 10, 14, 0, 0, 7); ctx.fill();
+
+  /* the cable */
+  const cable = new Path2D();
+  cable.moveTo(640, 152); cable.bezierCurveTo(655, 80, 735, 85, 700, 128);
+  cable.bezierCurveTo(770, 205, 900, 150, 965, 290);
+  cable.bezierCurveTo(1005, 385, 1060, 470, 1075, 600);
+  cable.bezierCurveTo(1085, 700, 1125, 760, 1160, 830);
+  ctx.strokeStyle = '#020506'; ctx.lineWidth = 7.5; ctx.stroke(cable);
+  ctx.strokeStyle = `rgba(${FOG},.5)`; ctx.lineWidth = 1.6; ctx.setLineDash([9, 7]); ctx.stroke(cable); ctx.setLineDash([]);
+
+  /* the sea */
+  ctx.fillStyle = vgrad(SEA, H, [[0, 'rgba(12,28,30,.72)'], [1, 'rgba(2,5,6,.97)']]); ctx.fillRect(0, SEA, W, H - SEA);
+  ctx.fillStyle = `rgba(${BONE},.2)`; ctx.fillRect(0, SEA, W, 1.2);
+  for (let i = 0; i < 150; i++) {
+    const y = SEA + 4 + Math.pow(r(), 1.4) * 190, w = 20 + r() * 90;
+    ctx.fillStyle = `rgba(${BONE},${0.03 + r() * 0.07})`; ctx.fillRect(r() * W, y, w, 1.4);
+  }
+  for (let i = 0; i < 34; i++) {
+    const k = i / 34, w = (10 + i * 3) * (0.5 + r() * 0.5);
+    ctx.fillStyle = `rgba(${BONE},${0.22 * (1 - k * 0.6)})`; ctx.fillRect(1330 - w / 2 + (r() - 0.5) * i * 1.4, SEA + 6 + k * 185, w, 1.6);
+  }
+  ctx.save(); ctx.translate(250, 880); ctx.scale(1, 0.28); glow(0, 0, 200, LURE, 0.3); ctx.restore();
+  ctx.strokeStyle = `rgba(${BONE},.3)`; ctx.lineWidth = 1.6;
+  for (const [x, w] of [[505, 110], [420, 100], [1000, 140], [905, 130], [1330, 120]])
+    for (let j = 0; j < 3; j++) { ctx.beginPath(); ctx.ellipse(x, SEA + 6 + j * 3, w + j * 22, 5 + j * 4, 0, 0, 7); ctx.globalAlpha = 1 - j * 0.3; ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 5; i++) glow(r() * W, 780 + r() * 80, 240, FOG, 0.06);
+
+  /* drafting marks */
+  ctx.strokeStyle = `rgba(${FOG},.7)`; ctx.lineWidth = 1.3; ctx.beginPath();
+  ctx.moveTo(92, 172); ctx.lineTo(92, SEA);
+  ctx.moveTo(78, 172); ctx.lineTo(106, 172); ctx.moveTo(78, SEA); ctx.lineTo(106, SEA);
+  ctx.stroke();
+  ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(106, 172); ctx.lineTo(700, 172); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = `rgba(${BONE},.6)`; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (const [ax, ay, bx, by] of [[170, 205, 236, 236], [211, 390, 290, 458], [211, 620, 300, 528], [952, 90, 880, 150], [1144, 330, 1010, 390], [800, 555, 770, 618], [1440, 600, 1400, 700]]) { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+  ctx.stroke();
+
+  /* vignette and grain */
+  const v = ctx.createRadialGradient(W / 2, H / 2, 420, W / 2, H / 2, 1000);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const im = ctx.getImageData(0, 0, W, H), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 16; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  ctx.putImageData(im, 0, 0);
+}
+paint();
+</script>
+</body>
+</html>
